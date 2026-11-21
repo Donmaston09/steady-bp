@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1f5bb8">
+<meta name="description" content="Steady: a free, offline blood pressure checker and diary. Plain-language results based on published guidelines. Created by Anthony Onoja, PhD, University of Surrey.">
+<meta name="author" content="Anthony Onoja, PhD">
+<title>Steady BP Companion</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+/* Layout idea: a calm, high-contrast health diary for phones. One job per tab; the big traffic-light result first, detail below. System fonts only, so it loads instantly offline. */
+:root{
+  --bg:#f2f4f8; --surface:#ffffff; --ink:#15203a; --muted:#4f5b75; --line:#d5dbe6;
+  --accent:#1f5bb8; --accent-ink:#ffffff; --dia:#0d8577;
+  --ok:#1b7744; --ok-bg:#e3f3ea; --elev:#7a5f00; --elev-bg:#fbf2d2;
+  --warn:#b4500a; --warn-bg:#fde9d9; --crit:#b01f2a; --crit-bg:#fbe1e3; --low:#5a45a8; --low-bg:#ebe6fa;
+  --font-display: ui-rounded, "SF Pro Rounded", "Segoe UI", Roboto, "Noto Sans", system-ui, sans-serif;
+  --font-body: "Segoe UI", Roboto, "Noto Sans", system-ui, -apple-system, sans-serif;
+  --r:14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b111d; --surface:#141c2e; --ink:#e8edf6; --muted:#a3aec6; --line:#2a3552;
+    --accent:#86acff; --accent-ink:#0b111d; --dia:#4fd0bd;
+    --ok:#6fd39a; --ok-bg:#143022; --elev:#ebcd5e; --elev-bg:#322b10; --warn:#ffa66b; --warn-bg:#3a2414;
+    --crit:#ff8089; --crit-bg:#3d171c; --low:#b7a6ff; --low-bg:#272143;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b111d; --surface:#141c2e; --ink:#e8edf6; --muted:#a3aec6; --line:#2a3552;
+  --accent:#86acff; --accent-ink:#0b111d; --dia:#4fd0bd;
+  --ok:#6fd39a; --ok-bg:#143022; --elev:#ebcd5e; --elev-bg:#322b10; --warn:#ffa66b; --warn-bg:#3a2414;
+  --crit:#ff8089; --crit-bg:#3d171c; --low:#b7a6ff; --low-bg:#272143;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:1.0625rem;line-height:1.5}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.2;font-weight:700}
+h1{font-size:1.5rem} h2{font-size:1.3rem} h3{font-size:1.08rem}
+p{margin:0}
+a{color:var(--accent)}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px}
+header{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0 6px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{flex:none}
+.tag{color:var(--muted);font-size:.88rem}
+.status{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav a{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 12px;text-decoration:none;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;font-weight:700;font-size:.85rem;min-width:0}
+nav a svg{width:22px;height:22px}
+nav a[aria-current="page"]{color:var(--ink);border-color:var(--accent)}
+main{padding:18px 0 48px}
+section.view{display:none;flex-direction:column;gap:18px}
+section.view.on{display:flex}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px}
+.muted{color:var(--muted)}
+.small{font-size:.9rem}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+label{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.95rem}
+label.inline{flex-direction:row;align-items:center;gap:10px;font-weight:400}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+input.num{width:120px;font-size:1.8rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:center;padding:8px}
+input.num2{width:96px;font-size:1.25rem;font-variant-numeric:tabular-nums}
+input[type=checkbox]{width:24px;height:24px;accent-color:var(--accent);flex:none}
+textarea{width:100%;min-height:90px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85rem}
+button,.btn{font:inherit;font-weight:700;border-radius:12px;padding:12px 18px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px}
+button.ghost,.btn.ghost{background:transparent;color:var(--accent)}
+button.quiet,.btn.quiet{background:transparent;border-color:var(--line);color:var(--ink)}
+button.sm{min-height:38px;padding:6px 12px;font-size:.9rem}
+button.big{font-size:1.2rem;min-height:56px;width:100%}
+button.choice{flex:1 1 180px;min-height:72px;font-size:1.1rem;background:var(--surface);color:var(--ink);border:2px solid var(--line)}
+button.choice[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0;display:flex;flex-direction:column;gap:8px}
+legend{font-weight:700;font-size:.95rem;padding:0 4px}
+.sym{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
+@media (max-width:480px){.sym{grid-template-columns:1fr}}
+.slash{font-size:2rem;color:var(--muted);padding-bottom:8px}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:.85rem}
+.lv-low{color:var(--low);background:var(--low-bg)} .lv-0{color:var(--ok);background:var(--ok-bg)}
+.lv-1{color:var(--elev);background:var(--elev-bg)} .lv-2{color:var(--warn);background:var(--warn-bg)}
+.lv-3,.lv-4{color:var(--crit);background:var(--crit-bg)}
+.result{border-left:8px solid var(--line)}
+.result.s-low{border-color:var(--low)} .result.s-0{border-color:var(--ok)} .result.s-1{border-color:var(--elev)}
+.result.s-2{border-color:var(--warn)} .result.s-3,.result.s-4{border-color:var(--crit)}
+.verdict{font-family:var(--font-display);font-size:1.7rem;font-weight:800;line-height:1.15}
+.big{font-family:var(--font-display);font-size:2.4rem;font-variant-numeric:tabular-nums;line-height:1;font-weight:700}
+.big small{font-size:1rem;color:var(--muted);font-family:var(--font-body);font-weight:400}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;font-size:.72rem;text-align:center;font-weight:700}
+.scale div{padding:6px 2px;border-radius:6px;opacity:.38}
+.scale div.on{opacity:1;outline:3px solid var(--ink);outline-offset:1px}
+.alert,.result{scroll-margin-top:170px}
+.alert{border:3px solid var(--crit);background:var(--crit-bg);color:var(--ink);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px}
+.alert h2{color:var(--crit);font-size:1.5rem}
+.alert a.btn{background:var(--crit);border-color:var(--crit);color:#fff;font-size:1.2rem;align-self:flex-start}
+.note{background:var(--elev-bg);border-radius:10px;padding:10px 12px;font-size:.95rem}
+.banner{border-radius:var(--r);padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.banner.ex{background:var(--low-bg)}
+.banner.setup{background:var(--surface);border:2px solid var(--accent);flex-direction:column;align-items:stretch}
+ul.clean{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:.93rem;vertical-align:top}
+th{color:var(--muted);font-weight:700}
+.tablewrap{overflow-x:auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px}
+.stat b{font-family:var(--font-display);font-size:1.5rem;font-variant-numeric:tabular-nums}
+.chart svg{width:100%;height:auto;display:block}
+.weekgrid{display:grid;grid-template-columns:64px repeat(7,minmax(38px,1fr));gap:5px;font-size:.82rem;text-align:center}
+.weekwrap{overflow-x:auto}
+.weekgrid div{padding:8px 2px;border-radius:6px}
+.cell{background:var(--bg);border:1px solid var(--line)}
+.cell.done{background:var(--ok-bg);color:var(--ok);border-color:transparent;font-weight:700}
+.cell.part{background:var(--elev-bg);color:var(--elev);border-color:transparent;font-weight:700}
+.cell.skip{opacity:.55}
+.pacer{display:flex;align-items:center;justify-content:center;height:220px}
+.orb{width:86px;height:86px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--accent),var(--dia));transition:transform 5.5s ease-in-out}
+.orb.in{transform:scale(2.2)}
+.pacer-label{font-family:var(--font-display);font-size:1.4rem;text-align:center;min-height:1.6em;font-weight:700}
+.timer{font-family:var(--font-display);font-size:3rem;font-variant-numeric:tabular-nums;text-align:center;font-weight:700}
+.progress{height:12px;background:var(--bg);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.progress span{display:block;height:100%;background:var(--accent)}
+.toast{position:fixed;left:16px;right:16px;bottom:16px;max-width:420px;margin-left:auto;background:var(--surface);border:2px solid var(--accent);border-radius:var(--r);padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.2);display:none;flex-direction:column;gap:8px;z-index:30}
+.toast.on{display:flex}
+.foot{color:var(--muted);font-size:.88rem;border-top:1px solid var(--line);padding-top:16px;margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.hide{display:none!important}
+.med{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+details{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+details summary{cursor:pointer;font-weight:700}
+details[open] summary{margin-bottom:10px}
+.monitor{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.monitor svg{flex:none}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.fact{border-left:5px solid var(--accent);background:var(--bg);border-radius:10px;padding:12px 14px}
+.fact b{display:block;margin-bottom:4px}
+.creator{display:flex;gap:14px;align-items:flex-start}
+.creator .av{width:52px;height:52px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:1.2rem;flex:none}
+@media (prefers-reduced-motion: reduce){.orb{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <svg width="36" height="36" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="var(--accent)"/><path d="M5 18h6l3-7 4 13 3-9 2 3h6" fill="none" stroke="var(--accent-ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div><h1>Steady</h1><div class="tag">Check and understand your blood pressure</div></div>
+      </div>
+      <div class="status">
+        <span id="netPill" class="pill lv-0">Works offline</span>
+        <button id="installBtn" class="sm hide">Install app</button>
+      </div>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Check</a>
+      <a href="#history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>My readings</a>
+      <a href="#week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>7-day check</a>
+      <a href="#move"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M8 21l3-6 3 2v4M7 12l3-4 4 1 3 3M11 15l1-6"/></svg>Stay healthy</a>
+      <a href="#reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M5 3L2 6M19 3l3 3"/></svg>Reminders</a>
+      <a href="#learn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 5v16M19 19v2H6"/></svg>Learn</a>
+      <a href="#share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Share</a>
+      <a href="#setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Setup</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="setupBanner" class="banner setup hide" style="margin-bottom:18px">
+    <h2>Welcome. Where do you live?</h2>
+    <p class="muted">This sets the right emergency number and health advice for you. You can change it later in Setup.</p>
+    <div class="row" id="countryChoices"></div>
+  </div>
+  <div id="exampleBanner" class="banner ex hide" style="margin-bottom:18px">
+    <span><b>These are example readings</b> to show how Steady works. Clear them before you add your own.</span>
+    <button class="quiet sm" id="clearExamples">Clear examples</button>
+  </div>
+
+  <!-- CHECK -->
+  <section class="view" id="v-check">
+    <div id="crisis" class="alert hide" role="alert"></div>
+    <div class="grid2">
+      <form class="card" id="form" novalidate>
+        <h2>Add your reading</h2>
+        <div class="monitor">
+          <svg width="118" height="126" viewBox="0 0 118 126" role="img" aria-label="A blood pressure monitor screen: SYS is the top number, DIA the bottom number, PUL your heart rate">
+            <rect x="1" y="1" width="116" height="124" rx="14" fill="var(--bg)" stroke="var(--line)" stroke-width="2"/>
+            <rect x="12" y="10" width="94" height="106" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="20" y="34" font-size="11" font-weight="700" fill="var(--accent)">SYS</text><text x="100" y="42" font-size="28" font-weight="700" text-anchor="end" fill="var(--ink)">128</text>
+            <text x="20" y="70" font-size="11" font-weight="700" fill="var(--dia)">DIA</text><text x="100" y="78" font-size="28" font-weight="700" text-anchor="end" fill="var(--ink)">82</text>
+            <text x="20" y="102" font-size="11" font-weight="700" fill="var(--muted)">PUL</text><text x="100" y="106" font-size="18" font-weight="700" text-anchor="end" fill="var(--ink)">70</text>
+          </svg>
+          <p class="small">Copy the numbers from your machine.<br><b style="color:var(--accent)">SYS</b> is the top number.<br><b style="color:var(--dia)">DIA</b> is the bottom number.<br><b>PUL</b> is your heart rate.</p>
+        </div>
+        <div class="row">
+          <label for="s1">Top (SYS)<input class="num" type="number" id="s1" inputmode="numeric" min="50" max="300" placeholder="128" required></label>
+          <span class="slash">/</span>
+          <label for="d1">Bottom (DIA)<input class="num" type="number" id="d1" inputmode="numeric" min="30" max="200" placeholder="82" required></label>
+          <label for="p1">Heart rate (PUL)<input class="num2" type="number" id="p1" inputmode="numeric" min="25" max="250" placeholder="70"></label>
+        </div>
+        <fieldset>
+          <legend>Do you feel any of these right now?</legend>
+          <div class="sym" id="symptoms"></div>
+        </fieldset>
+        <details>
+          <summary>More options (second reading, time, notes)</summary>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <p class="small muted">For the best result: sit still for 5 minutes, take one reading, wait 1 minute, take another.</p>
+            <div class="row"><button type="button" class="quiet sm" id="restBtn">Start 5-minute rest timer</button><span id="restOut" class="small muted" aria-live="polite"></span></div>
+            <div class="row">
+              <label for="s2">2nd top<input class="num2" type="number" id="s2" inputmode="numeric" min="50" max="300"></label>
+              <span class="slash">/</span>
+              <label for="d2">2nd bottom<input class="num2" type="number" id="d2" inputmode="numeric" min="30" max="200"></label>
+              <label for="p2">Heart rate<input class="num2" type="number" id="p2" inputmode="numeric" min="25" max="250"></label>
+            </div>
+            <div class="row">
+              <label for="when">Date and time<input type="datetime-local" id="when"></label>
+              <label for="setting">Where<select id="setting"><option value="home">At home</option><option value="clinic">Clinic, hospital or pharmacy</option></select></label>
+              <label for="arm">Arm<select id="arm"><option>Left</option><option>Right</option></select></label>
+            </div>
+            <label class="inline"><input type="checkbox" id="irreg"> My machine showed an irregular heartbeat sign</label>
+            <label for="note">Note<input type="text" id="note" placeholder="e.g. after tea, missed my tablet, stressful day"></label>
+          </div>
+        </details>
+        <p id="formErr" style="color:var(--crit);font-weight:700" aria-live="assertive"></p>
+        <button type="submit" class="big">See what it means</button>
+      </form>
+
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="card result" id="resultCard" aria-live="polite"></div>
+        <div class="card"><h3>Today</h3><div id="today"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="v-history">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h2>Your trend</h2>
+        <label class="small" for="range">Show<select id="range"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></label>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="chart" id="chart"></div>
+      <p class="small muted">The dashed lines show where "high" starts for home readings. One reading can go up and down. Your average over several days matters most.</p>
+    </div>
+    <div class="card">
+      <h2>All readings</h2>
+      <div class="tablewrap"><table id="table"></table></div>
+    </div>
+  </section>
+
+  <!-- WEEK -->
+  <section class="view" id="v-week">
+    <div class="card">
+      <h2>7-day home check</h2>
+      <p>This is the best way to know your true blood pressure. For 7 days, take <b>2 readings every morning and 2 every evening</b>, 1 minute apart. Day 1 is practice and isn't counted. Show the average to your health worker.</p>
+      <div class="row"><label for="weekStart">My week starts on<input type="date" id="weekStart"></label></div>
+      <div class="weekwrap"><div class="weekgrid" id="weekgrid"></div></div>
+      <div id="weekResult"></div>
+    </div>
+  </section>
+
+  <!-- MOVE -->
+  <section class="view" id="v-move">
+    <div class="card">
+      <h2>Your activity this week</h2>
+      <div class="stats" id="actStats"></div>
+      <p class="small muted">Aim for at least 150 minutes of brisk activity a week (for example, 30 minutes on 5 days). A study of 270 trials found isometric exercise, such as wall sits, lowered blood pressure the most, by about 8/4 mmHg on average.</p>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>Calm breathing</h3>
+        <p class="small muted">Breathe in as the circle grows and out as it shrinks. Helpful when you feel stressed.</p>
+        <div class="pacer"><div class="orb" id="orb"></div></div>
+        <div class="pacer-label" id="pacerLabel" aria-live="polite">Ready when you are</div>
+        <div class="row" style="justify-content:center">
+          <select id="breathMin" aria-label="How long"><option value="3">3 minutes</option><option value="5" selected>5 minutes</option><option value="10">10 minutes</option></select>
+          <button id="breathBtn">Start</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Wall sit or hand squeeze</h3>
+        <p class="small muted">Hold for 2 minutes, rest for 2 minutes, 4 times. Do this 3 times a week. Keep breathing normally and never hold your breath. Don't do it if your reading is 180/110 or higher. If you have heart problems, ask your health worker first.</p>
+        <div class="timer" id="isoTime">2:00</div>
+        <div class="pacer-label" id="isoLabel" aria-live="polite">Hold 1 of 4</div>
+        <div class="row" style="justify-content:center">
+          <select id="isoType" aria-label="Exercise"><option>Wall sit</option><option>Hand squeeze (ball or towel)</option></select>
+          <button id="isoBtn">Start</button>
+          <button class="quiet" id="isoStop">Stop</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Walk</h3>
+        <p class="small muted">Walk fast enough that you can talk but not sing.</p>
+        <div class="timer" id="walkTime">10:00</div>
+        <div class="row" style="justify-content:center">
+          <select id="walkMin" aria-label="Walk length"><option value="5">5 minutes</option><option value="10" selected>10 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option></select>
+          <button id="walkBtn">Start walk</button>
+          <button class="quiet" id="walkStop">Stop</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>I did some other activity</h3>
+        <div class="row">
+          <label for="actType">What<select id="actType"><option>Walking</option><option>Farming / gardening</option><option>Housework</option><option>Dancing</option><option>Cycling</option><option>Football / sport</option><option>Strength exercise</option><option>Isometric</option><option>Breathing / prayer / meditation</option></select></label>
+          <label for="actMin">Minutes<input class="num2" type="number" id="actMin" min="1" max="600" value="20"></label>
+          <button id="actAdd">Save</button>
+        </div>
+        <h3>Easy ways to lower stress and move more</h3>
+        <ul class="clean">
+          <li>Walk for 5 minutes after every meal or long sitting.</li>
+          <li>Use the stairs. Walk while you talk on the phone.</li>
+          <li>Try 5 minutes of calm breathing or quiet prayer before bed.</li>
+          <li>Sleep 7 to 9 hours. Keep the same bedtime.</li>
+          <li>Spend time with family and friends.</li>
+          <li>Drink less alcohol, and no tea, coffee or cigarettes for 30 minutes before a reading.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- REMINDERS -->
+  <section class="view" id="v-reminders">
+    <div class="card">
+      <h2>The most reliable reminder: your phone's alarm</h2>
+      <p>Open your phone's <b>Clock</b> app and set two daily alarms named "Check blood pressure", one for the morning and one for the evening. Alarms work without internet, even when Steady is closed.</p>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Blood pressure check times</h2>
+        <div class="row">
+          <label for="amTime">Morning<input type="time" id="amTime"></label>
+          <label for="pmTime">Evening<input type="time" id="pmTime"></label>
+          <label class="inline"><input type="checkbox" id="bpOn"> Remind me</label>
+        </div>
+        <p class="small muted">Morning: before breakfast and before medicine. Evening: before your evening meal.</p>
+        <div class="row" id="calLinks"></div>
+      </div>
+      <div class="card">
+        <h2>Get up and move</h2>
+        <div class="row">
+          <label for="moveEvery">Every<select id="moveEvery"><option value="30">30 min</option><option value="45">45 min</option><option value="60">1 hour</option><option value="90">1½ hours</option></select></label>
+          <label for="moveFrom">From<input type="time" id="moveFrom"></label>
+          <label for="moveTo">Until<input type="time" id="moveTo"></label>
+          <label class="inline"><input type="checkbox" id="moveOn"> On</label>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Medicine reminders</h2>
+        <div id="medList" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div class="row">
+          <label for="medName">Medicine<input type="text" id="medName" placeholder="e.g. amlodipine 5 mg"></label>
+          <label for="medTime">Time<input type="time" id="medTime" value="08:00"></label>
+          <button id="medAdd">Add</button>
+        </div>
+        <p class="small"><b>Keep taking your medicine even when you feel well.</b> Don't stop or change it without talking to your health worker.</p>
+      </div>
+      <div class="card">
+        <h2>Pop-up reminders</h2>
+        <p class="small">While Steady is open, reminders pop up on screen. On Android, after you install Steady, you can also allow notifications.</p>
+        <div class="row"><button class="quiet" id="notifBtn">Allow notifications</button><button class="quiet" id="testBtn">Show a test reminder</button></div>
+        <span id="notifOut" class="small muted"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEARN -->
+  <section class="view" id="v-learn">
+    <div class="card">
+      <h2>Key facts</h2>
+      <div class="facts">
+        <div class="fact"><b>High blood pressure is usually silent</b>Most people feel nothing at all. The only way to know is to measure it.</div>
+        <div class="fact"><b>Keep taking your medicine</b>Blood pressure medicine works only while you take it. Feeling well means it's working.</div>
+        <div class="fact"><b>Less salt</b>WHO advises less than 5 g of salt a day, about one level teaspoon in total. Seasoning cubes, stock powder, instant noodles and salted fish add a lot.</div>
+        <div class="fact"><b>Herbs don't replace medicine</b>Herbal mixtures can interact with your tablets. Tell your health worker about anything you take.</div>
+        <div class="fact"><b>Eat more plants</b>Vegetables (such as ugu, spinach and bitter leaf), fruit, beans and whole grains help lower blood pressure.</div>
+        <div class="fact"><b>Move every day</b>Brisk walking, farm work, dancing and wall sits all lower blood pressure over time.</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>How to take a good reading</h2>
+      <div class="grid2">
+        <ol class="clean">
+          <li>No tea, coffee, smoking or exercise for 30 minutes before. Use the toilet first.</li>
+          <li>Sit on a chair with your back supported and both feet flat. Don't cross your legs.</li>
+          <li>Rest quietly for 5 minutes. Don't talk during the reading.</li>
+          <li>Put the cuff on your bare upper arm, at the level of your heart, with your arm resting on a table.</li>
+        </ol>
+        <ol class="clean" start="5">
+          <li>Use the right cuff size. A cuff that's too small gives readings that are too high.</li>
+          <li>Take 2 readings 1 minute apart. If they're very different, take a third.</li>
+          <li>Use an upper-arm machine that has been tested for accuracy. Wrist machines are less reliable. Check <a href="https://www.validatebp.org/">validatebp.org</a> or the <a href="https://bihsoc.org/bp-monitors/">BIHS list</a>.</li>
+          <li>Measure at about the same times each day.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="card">
+      <h2>How Steady reads your numbers</h2>
+      <div class="tablewrap"><table id="thresholds"></table></div>
+      <p class="small muted">If the top and bottom numbers fall in different bands, the higher band counts. Home readings are usually lower than clinic readings, so most guidelines use lower home cut-offs (135/85). Steady isn't designed for pregnancy or children, which use different rules.</p>
+    </div>
+    <div class="card">
+      <h2>The research behind the advice</h2>
+      <p class="small muted">Average effects from trials, mostly in people with high blood pressure. Your result may differ, and the effects don't simply add up.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Change</th><th>Average drop (top / bottom)</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td>Isometric exercise (wall sit, hand squeeze)</td><td>about 8 / 4 mmHg</td><td><a href="https://doi.org/10.1136/bjsports-2022-106503">Edwards et al., Br J Sports Med 2023</a></td></tr>
+          <tr><td>Aerobic plus strength exercise</td><td>about 6 / 2.5 mmHg</td><td>Edwards et al. 2023</td></tr>
+          <tr><td>Walking, cycling and other aerobic exercise</td><td>about 4.5 / 2.5 mmHg</td><td>Edwards et al. 2023</td></tr>
+          <tr><td>DASH-style eating (fruit, vegetables, beans, low-fat dairy)</td><td>about 11 / 5.5 mmHg</td><td><a href="https://doi.org/10.1056/NEJM199704173361601">Appel et al., NEJM 1997</a></td></tr>
+          <tr><td>Eating about 4.4 g less salt a day</td><td>about 5.4 / 2.8 mmHg</td><td><a href="https://doi.org/10.1136/bmj.f1325">He et al., BMJ 2013</a></td></tr>
+          <tr><td>Losing weight</td><td>about 1 mmHg per kg lost</td><td><a href="https://doi.org/10.1161/01.HYP.0000094221.86888.AE">Neter et al., Hypertension 2003</a></td></tr>
+          <tr><td>Halving alcohol (in people drinking more than 2 drinks a day)</td><td>about 5.5 / 4 mmHg</td><td><a href="https://doi.org/10.1016/S2468-2667(17)30003-8">Roerecke et al., Lancet Public Health 2017</a></td></tr>
+          <tr><td>Slow breathing, meditation</td><td>small, weaker evidence</td><td><a href="https://doi.org/10.1161/HYP.0b013e318293645f">AHA statement, Hypertension 2013</a></td></tr>
+        </tbody>
+      </table></div>
+      <h3>Guidelines used</h3>
+      <ul class="clean small">
+        <li><a href="https://doi.org/10.1161/HYPERTENSIONAHA.120.15026">2020 ISH Global Hypertension Practice Guidelines</a> (written for both low- and high-resource settings)</li>
+        <li><a href="https://www.nice.org.uk/guidance/ng136">NICE NG136: Hypertension in adults</a> (UK)</li>
+        <li><a href="https://doi.org/10.1093/eurheartj/ehae178">2024 ESC Guidelines for elevated blood pressure and hypertension</a></li>
+        <li><a href="https://doi.org/10.1161/HYP.0000000000000249">2025 AHA/ACC High Blood Pressure Guideline</a></li>
+        <li><a href="https://www.who.int/news-room/fact-sheets/detail/salt-reduction">WHO: Salt reduction</a></li>
+      </ul>
+    </div>
+    <div class="card" id="about">
+      <h2>About Steady</h2>
+      <div class="creator">
+        <div class="av" aria-hidden="true">AO</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <b>Created by Anthony Onoja, PhD</b>
+          <span>School of Health Sciences, University of Surrey, UK</span>
+          <span>Contact: <a href="mailto:donmaston09@gmail.com">donmaston09@gmail.com</a></span>
+        </div>
+      </div>
+      <p class="small muted">Steady is free. Everything you enter stays on your own phone. Nothing is sent anywhere. It gives general information based on published guidelines. It doesn't diagnose, it isn't a medical device, and it doesn't replace your doctor, nurse or pharmacist.</p>
+    </div>
+  </section>
+
+  <!-- SHARE -->
+  <section class="view" id="v-share">
+    <div class="card">
+      <h2>Show your health worker</h2>
+      <p class="small muted">Send this summary, or show it on your phone at your appointment.</p>
+      <textarea id="reportText" readonly style="min-height:280px"></textarea>
+      <div class="row">
+        <button id="copyReport">Copy summary</button>
+        <a class="btn quiet" id="waLink" href="#">Send on WhatsApp</a>
+        <a class="btn quiet" id="smsLink" href="#">Send by text message</a>
+        <button class="quiet" id="copyCsv">Copy readings for a spreadsheet</button>
+      </div>
+      <span id="copyOut" class="small muted" aria-live="polite"></span>
+    </div>
+    <div class="card">
+      <h2>Keep your readings safe</h2>
+      <p class="small muted">Your readings are saved only on this phone. To protect them if your phone is lost or changed, copy a backup and send it to yourself (for example on WhatsApp or by email). To restore, paste the backup here.</p>
+      <textarea id="backupText" placeholder="Paste a backup here to restore it"></textarea>
+      <div class="row"><button class="quiet" id="copyBackup">Copy backup</button><a class="btn quiet" id="waBackup" href="#">Send backup to myself on WhatsApp</a><button class="quiet" id="restore">Restore pasted backup</button></div>
+      <div class="row"><button class="quiet" id="wipe">Delete all my data</button></div>
+      <p id="wipeConfirm" class="small hide">Delete every reading, activity and reminder on this phone? <button class="quiet sm" id="wipeYes" style="border-color:var(--crit);color:var(--crit)">Yes, delete</button> <button class="quiet sm" id="wipeNo">Cancel</button></p>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section class="view" id="v-setup">
+    <div class="grid2">
+      <div class="card">
+        <h2>Where you live</h2>
+        <div class="row" id="countryChoices2"></div>
+        <p class="small muted" id="countryInfo"></p>
+      </div>
+      <div class="card">
+        <h2>Text size</h2>
+        <div class="row" id="sizeChoices"></div>
+        <h2>Colours</h2>
+        <div class="row" id="themeChoices"></div>
+        <p class="small muted">Dark colours use less battery on many phones.</p>
+      </div>
+      <div class="card">
+        <h2>Guideline</h2>
+        <label for="guide">Steady reads your numbers using
+          <select id="guide">
+            <option value="ish">ISH 2020 (international, for all settings)</option>
+            <option value="nice">NICE NG136 (UK)</option>
+            <option value="esc">ESC 2024 (Europe)</option>
+            <option value="aha">ACC/AHA 2025 (USA)</option>
+          </select>
+        </label>
+        <p class="small muted">If your health worker uses a different guideline, follow their advice.</p>
+        <label class="inline"><input type="checkbox" id="onMedsSetup"> I take blood pressure medicine</label>
+      </div>
+      <div class="card">
+        <h2>Use Steady without internet</h2>
+        <ol class="clean small">
+          <li>Open Steady once while you have internet.</li>
+          <li><b>Android (Chrome):</b> tap <b>Install app</b> at the top, or the ⋮ menu, then <b>Add to Home screen</b>.</li>
+          <li><b>iPhone (Safari):</b> tap the Share button, then <b>Add to Home Screen</b>.</li>
+          <li>Open Steady from the icon on your home screen. It works without data or Wi-Fi, and uses very little battery.</li>
+        </ol>
+        <p class="small muted" id="swStatus"></p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Steady gives general information based on published guidelines. It doesn't diagnose, and it doesn't replace your health worker. <b id="footEmerg"></b></span>
+    <span>Created by <b>Anthony Onoja, PhD</b>, School of Health Sciences, University of Surrey, UK · <a href="mailto:donmaston09@gmail.com">donmaston09@gmail.com</a> · <a href="#learn" id="aboutLink">About</a></span>
+  </footer>
+</main>
+
+<div class="toast" id="toast" role="status"><b id="toastTitle"></b><span id="toastBody"></span><div class="row"><button id="toastAct" class="sm hide"></button><button class="quiet sm" id="toastClose">Dismiss</button></div></div>
+
+<script>
+"use strict";
+/* ---------- storage ---------- */
+const mem = {};
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("steady."+k); if(v!==null) return JSON.parse(v); }catch(e){} return k in mem ? mem[k] : d; },
+  set(k, v){ mem[k]=v; try{ localStorage.setItem("steady."+k, JSON.stringify(v)); }catch(e){} }
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const localISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fmtDate = d => d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+const fmtTime = d => d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+
+/* ---------- country settings ---------- */
+const COUNTRIES = {
+  ng:{ name:"Nigeria", guide:"ish", emerg:"112", emergText:"Call 112 now. It's free from any network, even with no airtime.",
+       urgent:"go to the nearest hospital or clinic today", worker:"doctor, nurse, community health worker or pharmacist",
+       info:"Emergency number: 112 (free from any network). Default guideline: ISH 2020." },
+  uk:{ name:"United Kingdom", guide:"nice", emerg:"999", emergText:"Call 999 now.",
+       urgent:"contact your GP surgery today or call NHS 111", worker:"GP, practice nurse or pharmacist",
+       info:"Emergency number: 999. Urgent advice: NHS 111. Default guideline: NICE NG136." },
+  other:{ name:"Another country", guide:"ish", emerg:"112", emergText:"Call your local emergency number now (112 works in many countries).",
+       urgent:"see a doctor or go to a clinic today", worker:"doctor, nurse or pharmacist",
+       info:"Emergency number: your local number (112 works in many countries). Default guideline: ISH 2020." }
+};
+const C = () => COUNTRIES[prefs.country||"ng"];
+
+const SYMPTOMS = ["Chest pain","Shortness of breath","Back pain","Numbness or weakness","Problems seeing","Difficulty speaking","Very bad headache","Confusion","Dizziness or fainting"];
+const EMERGENCY_SYM = SYMPTOMS.slice(0,8);
+
+/* ---------- guideline logic ---------- */
+const PLAIN = {low:"Low",0:"Normal",1:"A little high",2:"High",3:"Too high",4:"Dangerously high"};
+const GUIDES = {
+  ish:{ name:"ISH 2020",
+    classify(s,d,setting){
+      if(s>=180||d>=120) return 4;
+      if(s>=160||d>=100) return 3;
+      if(setting==="home"){ if(s>=135||d>=85) return 2; return 0; }
+      if(s>=140||d>=90) return 2;
+      if(s>=130||d>=85) return 1;
+      return 0;
+    },
+    labels:{0:"Normal",1:"High-normal",2:"Hypertension (grade 1 range)",3:"Grade 2 range",4:"Severe range"},
+    homeLine:[135,85] },
+  nice:{ name:"NICE NG136",
+    classify(s,d,setting){
+      if(s>=180||d>=120) return 4;
+      if(setting==="home"){ if(s>=150||d>=95) return 3; if(s>=135||d>=85) return 2; return 0; }
+      if(s>=160||d>=100) return 3; if(s>=140||d>=90) return 2; return 0;
+    },
+    labels:{0:"Below hypertension threshold",2:"Stage 1 range",3:"Stage 2 range",4:"Severe (stage 3) range"},
+    homeLine:[135,85] },
+  esc:{ name:"ESC 2024",
+    classify(s,d,setting){
+      if(s>=180||d>=120) return 4;
+      const H = setting==="home" ? [135,85] : [140,90];
+      if(s>=H[0]||d>=H[1]) return 3;
+      if(s>=120||d>=70) return 1;
+      return 0;
+    },
+    labels:{0:"Non-elevated",1:"Elevated",3:"Hypertension range",4:"Very high"},
+    homeLine:[135,85] },
+  aha:{ name:"ACC/AHA 2025",
+    classify(s,d){
+      if(s>=180||d>=120) return 4;
+      if(s>=140||d>=90) return 3;
+      if(s>=130||d>=80) return 2;
+      if(s>=120) return 1;
+      return 0;
+    },
+    labels:{0:"Normal",1:"Elevated",2:"Stage 1 range",3:"Stage 2 range",4:"Severe range"},
+    homeLine:[130,80] }
+};
+function interpret(s,d,setting,guideKey){
+  const g = GUIDES[guideKey];
+  const lv = g.classify(s,d,setting);
+  const low = (s<90||d<60) && lv<2;
+  return { lv: low ? "low" : lv, label: low ? "Low (below 90/60)" : g.labels[lv], plain: PLAIN[low?"low":lv], guide:g.name };
+}
+function nextSteps(lv, sym, onMeds){
+  const c=C(), hasEmerg = sym.some(x => EMERGENCY_SYM.includes(x));
+  switch(lv){
+    case "low": return sym.includes("Dizziness or fainting")
+      ? `Sit or lie down and drink some water. If you keep feeling faint, ${c.urgent}. If you fainted and hurt yourself, or you have chest pain, call ${c.emerg}.`
+      : `Low readings with no symptoms are often normal for some people. If you feel dizzy, faint or very tired, or you take blood pressure medicine, tell your ${c.worker}.`;
+    case 0: return "Well done. Keep eating well and staying active. Check again regularly.";
+    case 1: return "This isn't high blood pressure yet, but it's starting to rise. Eating less salt and moving more can bring it down. Check again in a few days.";
+    case 2: return `One reading isn't enough to know for sure. Do the 7-day home check, then show the average to your ${c.worker}.`;
+    case 3: return onMeds
+      ? `This is higher than it should be. Tell your ${c.worker} soon and show them your readings. Don't change your medicine on your own.`
+      : `Please see your ${c.worker} within the next 1 to 2 weeks and show them your readings. You may need treatment.`;
+    case 4: return hasEmerg
+      ? c.emergText+" Very high blood pressure with these symptoms can be an emergency."
+      : `Sit quietly for 5 minutes and check again. If it's still 180/120 or higher, ${c.urgent}. If you get chest pain, weakness, trouble speaking or seeing, or a very bad headache, call ${c.emerg}.`;
+  }
+}
+function weekAdvice(lv){
+  const c=C();
+  return {low:`Your average is low. If you feel dizzy or faint, or you take blood pressure medicine, talk to your ${c.worker}.`,
+    0:"Your home average is normal. Keep up your healthy habits and repeat this check every few months.",
+    1:"Your average is a little high. Eating less salt and moving more can help. Repeat the check in a few months.",
+    2:`Your home average is in the high blood pressure range. Show this average to your ${c.worker}. Guidelines use this number to confirm a diagnosis.`,
+    3:onMeds()?`Your average is above target. Show it to your ${c.worker} soon.`:`Your home average is clearly high. See your ${c.worker} within the next 1 to 2 weeks and bring this average.`,
+    4:`Your average is very high. Please ${c.urgent}.`}[lv];
+}
+const onMeds = () => !!prefs.onMeds;
+
+/* ---------- state ---------- */
+let readings = store.get("readings", null);
+let activities = store.get("activities", []);
+let prefs = Object.assign({guide:"ish", country:null, am:"07:00", pm:"19:00", bpOn:true, moveOn:true, moveEvery:"60", moveFrom:"09:00", moveTo:"18:00", meds:[], onMeds:false, size:1, theme:"auto"}, store.get("prefs", {}));
+let weekStart = store.get("weekStart", null);
+
+function seedExamples(){
+  const out=[]; let seed=7;
+  const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  const now=new Date();
+  for(let day=13; day>=0; day--){
+    for(const hr of [7,19]){
+      const t=new Date(now); t.setDate(now.getDate()-day); t.setHours(hr, Math.floor(rnd()*40), 0, 0);
+      if(t>now) continue;
+      const trend=day*0.5, sid=Math.random().toString(36).slice(2);
+      for(let k=0;k<2;k++){
+        const s=Math.round(134+trend+(hr===7?4:0)+(rnd()-0.5)*14-k*3), d=Math.round(84+trend*0.3+(rnd()-0.5)*8-k);
+        out.push({id:sid+k, sid, t:localISO(new Date(t.getTime()+k*60000)), s, d, p:Math.round(68+rnd()*12), setting:"home", arm:"Left", irreg:false, sym:[], note: day===4&&hr===19&&k===0?"Stressful day at work":"", ex:true});
+      }
+    }
+  }
+  return out;
+}
+if(readings===null){ readings = seedExamples(); store.set("readings", readings); }
+if(!weekStart){ const d=new Date(); d.setDate(d.getDate()-6); weekStart=dayKey(d); }
+
+const save = () => { store.set("readings",readings); store.set("activities",activities); store.set("prefs",prefs); store.set("weekStart",weekStart); };
+const sorted = () => readings.slice().sort((a,b)=>a.t.localeCompare(b.t));
+const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : NaN;
+
+/* ---------- appearance ---------- */
+function applyLook(){
+  document.documentElement.style.fontSize = (16*prefs.size)+"px";
+  if(prefs.theme==="auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", prefs.theme);
+}
+function choiceRow(el, options, current, onPick){
+  el.innerHTML = options.map(([v,l])=>`<button type="button" class="choice" data-v="${esc(v)}" aria-pressed="${String(v)===String(current)}">${esc(l)}</button>`).join("");
+  el.onclick = e => { const b=e.target.closest("button[data-v]"); if(b) onPick(b.dataset.v); };
+}
+function renderSetup(){
+  const cOpts=[["ng","Nigeria"],["uk","United Kingdom"],["other","Another country"]];
+  const pickCountry = v => { prefs.country=v; prefs.guide=COUNTRIES[v].guide; save(); render(); };
+  choiceRow($("countryChoices"), cOpts, prefs.country, pickCountry);
+  choiceRow($("countryChoices2"), cOpts, prefs.country, pickCountry);
+  $("setupBanner").classList.toggle("hide", !!prefs.country);
+  $("countryInfo").textContent = prefs.country ? C().info : "Not chosen yet.";
+  choiceRow($("sizeChoices"), [[1,"Normal"],[1.15,"Large"],[1.3,"Extra large"]], prefs.size, v=>{prefs.size=+v; save(); applyLook(); renderSetup();});
+  choiceRow($("themeChoices"), [["auto","Automatic"],["light","Light"],["dark","Dark"]], prefs.theme, v=>{prefs.theme=v; save(); applyLook(); renderSetup();});
+  $("guide").value=prefs.guide; $("onMedsSetup").checked=prefs.onMeds;
+  $("footEmerg").textContent = `In an emergency call ${C().emerg}.`;
+}
+$("guide").addEventListener("change", e=>{ prefs.guide=e.target.value; save(); render(); });
+$("onMedsSetup").addEventListener("change", e=>{ prefs.onMeds=e.target.checked; save(); render(); });
+
+/* ---------- routing ---------- */
+const VIEWS=["check","history","week","move","reminders","learn","share","setup"];
+function route(){
+  const h = location.hash.replace("#","");
+  const v = VIEWS.includes(h) ? h : "check";
+  VIEWS.forEach(x=>$("v-"+x).classList.toggle("on", x===v));
+  document.querySelectorAll("nav a").forEach(a=>a.setAttribute("aria-current", a.getAttribute("href")==="#"+v ? "page":"false"));
+  window.scrollTo(0,0);
+  render();
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- check form ---------- */
+$("symptoms").innerHTML = SYMPTOMS.map((s,i)=>`<label class="inline" for="sym${i}"><input type="checkbox" id="sym${i}" value="${esc(s)}"> ${esc(s)}</label>`).join("");
+$("when").value = localISO(new Date());
+
+let lastResult = null;
+$("form").addEventListener("submit", e=>{
+  e.preventDefault();
+  const n = id => { const v=$(id).value.trim(); return v===""?null:Number(v); };
+  const s1=n("s1"), d1=n("d1"), p1=n("p1"), s2=n("s2"), d2=n("d2"), p2=n("p2");
+  const err=[];
+  const ok=(s,d)=> s>=50 && s<=300 && d>=30 && d<=200 && s>d;
+  if(s1===null||d1===null) err.push("Please type both the top number (SYS) and the bottom number (DIA).");
+  else if(!ok(s1,d1)) err.push("Those numbers don't look right. The top number (SYS) should be bigger than the bottom number (DIA). Please check your machine again.");
+  if((s2===null)!==(d2===null)) err.push("For the second reading, type both numbers or leave both empty.");
+  else if(s2!==null && !ok(s2,d2)) err.push("The second reading doesn't look right. Please check it.");
+  if(err.length){ $("formErr").textContent=err.join(" "); return; }
+  $("formErr").textContent="";
+  const t=$("when").value || localISO(new Date());
+  const sym=[...document.querySelectorAll("#symptoms input:checked")].map(x=>x.value);
+  const base={t, setting:$("setting").value, arm:$("arm").value, irreg:$("irreg").checked, sym, note:$("note").value.trim(), sid:Math.random().toString(36).slice(2)};
+  const added=[{...base,id:base.sid+"0",s:s1,d:d1,p:p1}];
+  if(s2!==null){ const t2=new Date(t); t2.setMinutes(t2.getMinutes()+1); added.push({...base,id:base.sid+"1",t:localISO(t2),s:s2,d:d2,p:p2,note:""}); }
+  readings.push(...added); save();
+  lastResult={added, sym};
+  ["s1","d1","p1","s2","d2","p2","note"].forEach(id=>$(id).value="");
+  $("irreg").checked=false; document.querySelectorAll("#symptoms input").forEach(x=>x.checked=false);
+  $("when").value=localISO(new Date());
+  render();
+  ( $("crisis").classList.contains("hide") ? $("resultCard") : $("crisis") ).scrollIntoView({behavior:"smooth",block:"start"});
+});
+
+function speak(text){
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.rate=.92; u.lang="en-GB"; speechSynthesis.speak(u); }
+  catch(e){ toast("Read aloud isn't available","Your phone or browser doesn't support reading aloud."); }
+}
+
+function renderResult(){
+  const card=$("resultCard"), crisis=$("crisis");
+  let set, sym=[];
+  if(lastResult){ set=lastResult.added; sym=lastResult.sym; }
+  else { const all=sorted(); if(!all.length){ card.className="card result"; card.innerHTML="<h3>No readings yet</h3><p class='muted'>Type the numbers from your machine and tap <b>See what it means</b>.</p>"; crisis.classList.add("hide"); return; }
+    const last=all[all.length-1]; set=all.filter(r=>r.sid===last.sid); sym=last.sym||[]; }
+  const s=Math.round(avg(set.map(r=>r.s))), d=Math.round(avg(set.map(r=>r.d)));
+  const ps=set.map(r=>r.p).filter(x=>x); const p=ps.length?Math.round(avg(ps)):null;
+  const setting=set[0].setting, r=interpret(s,d,setting,prefs.guide), c=C();
+  const steps=nextSteps(r.lv,sym,prefs.onMeds);
+  const extra=[];
+  if(set.length===2 && Math.abs(set[0].s-set[1].s)>=10) extra.push("Your two readings are quite different. Rest for a minute and take a third reading.");
+  if(set.some(x=>x.irreg)) extra.push(`Your machine showed an irregular heartbeat sign. This can be a sign of a heart rhythm problem, and machines are less accurate when the heartbeat is irregular. Ask your ${c.worker} to check your pulse.`);
+  if(p && p>100) extra.push(`Your heart rate is over 100 while resting. If it stays this high, tell your ${c.worker}.`);
+  if(p && p<50) extra.push(`Your heart rate is under 50. This can be normal for very fit people, but tell your ${c.worker} if you feel dizzy, breathless or tired.`);
+  const scaleKeys=["low",0,1,2,3], onKey = r.lv===4?3:r.lv;
+  const scale=`<div class="scale" aria-hidden="true">${scaleKeys.map(k=>`<div class="lv-${k} ${k===onKey?"on":""}">${k===3?"Too high":PLAIN[k]}</div>`).join("")}</div>`;
+  const when=new Date(set[0].t);
+  card.className="card result s-"+r.lv;
+  card.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center"><span class="small muted">${set.length===2?"Average of your 2 readings":"Your reading"} · ${fmtDate(when)}, ${fmtTime(when)}</span></div>
+    <div class="verdict" style="color:var(--${{low:"low",0:"ok",1:"elev",2:"warn",3:"crit",4:"crit"}[r.lv]})">${esc(r.plain)}</div>
+    <div class="big">${s}/${d} <small>mmHg${p?` · heart rate ${p}`:""}</small></div>
+    ${scale}
+    <p style="font-size:1.08rem"><b>What to do:</b> ${esc(steps)}</p>
+    ${extra.map(x=>`<p class="note">${esc(x)}</p>`).join("")}
+    <div class="row"><button type="button" class="quiet sm" id="speakBtn">Read this aloud</button></div>
+    <p class="small muted">${esc(r.guide)}: ${esc(r.label)} (${setting==="home"?"home":"clinic"} reading)</p>`;
+  $("speakBtn").onclick=()=>speak(`Your blood pressure is ${s} over ${d}. This is ${r.plain}. ${steps} ${extra.join(" ")}`);
+  const emerg = r.lv===4 && sym.some(x=>EMERGENCY_SYM.includes(x));
+  if(emerg){ crisis.innerHTML=`<h2>Get help now. Call ${c.emerg}.</h2><p><b>${s}/${d}</b> with ${esc(sym.filter(x=>EMERGENCY_SYM.includes(x)).join(", ").toLowerCase())} can be an emergency. Don't wait to see if it goes down, and don't drive yourself.</p><a class="btn" href="tel:${c.emerg}">Call ${c.emerg}</a>`; crisis.classList.remove("hide"); }
+  else if(r.lv===4){ crisis.innerHTML=`<h2>Very high reading</h2><p>Sit quietly for 5 minutes and check again. If it's still 180/120 or higher, ${c.urgent}. Call ${c.emerg} straight away if you get chest pain, breathlessness, weakness, trouble speaking or seeing, or a very bad headache.</p>`; crisis.classList.remove("hide"); }
+  else crisis.classList.add("hide");
+}
+
+function renderToday(){
+  const today=dayKey(new Date());
+  const t=readings.filter(r=>r.t.slice(0,10)===today);
+  const am=t.filter(r=>+r.t.slice(11,13)<12).length, pm=t.length-am;
+  const mins=activities.filter(a=>a.t.slice(0,10)===today).reduce((x,a)=>x+a.min,0);
+  const tick=n=> n>=2?`<span class="pill lv-0">Done</span>`: n===1?`<span class="pill lv-1">1 of 2</span>`:`<span class="pill lv-low">Not yet</span>`;
+  $("today").innerHTML=`<table><tbody>
+    <tr><td>Morning check (${esc(prefs.am)})</td><td>${tick(am)}</td></tr>
+    <tr><td>Evening check (${esc(prefs.pm)})</td><td>${tick(pm)}</td></tr>
+    <tr><td>Activity today</td><td><b>${mins}</b> min</td></tr></tbody></table>`;
+}
+
+/* ---------- history ---------- */
+function inRange(days){ const cut=new Date(); cut.setDate(cut.getDate()-days); return sorted().filter(r=>new Date(r.t)>=cut); }
+function renderHistory(){
+  const days=+$("range").value, list=inRange(days), g=GUIDES[prefs.guide];
+  if(!list.length){ $("stats").innerHTML=""; $("chart").innerHTML="<p class='muted'>No readings in this time yet.</p>"; }
+  else{
+    const home=list.filter(r=>r.setting==="home");
+    const S=Math.round(avg(list.map(r=>r.s))), D=Math.round(avg(list.map(r=>r.d)));
+    const r=interpret(S,D,home.length>=list.length/2?"home":"clinic",prefs.guide);
+    const ps=list.map(r=>r.p).filter(Boolean);
+    $("stats").innerHTML=`<div class="stat"><span class="small muted">Average</span><b>${S}/${D}</b><span class="pill lv-${r.lv}">${esc(r.plain)}</span></div>
+      <div class="stat"><span class="small muted">Highest</span><b>${Math.max(...list.map(r=>r.s))}/${Math.max(...list.map(r=>r.d))}</b></div>
+      <div class="stat"><span class="small muted">Lowest</span><b>${Math.min(...list.map(r=>r.s))}/${Math.min(...list.map(r=>r.d))}</b></div>
+      <div class="stat"><span class="small muted">Average heart rate</span><b>${ps.length?Math.round(avg(ps)):"–"}</b></div>
+      <div class="stat"><span class="small muted">Readings</span><b>${list.length}</b></div>`;
+    $("chart").innerHTML=chartSVG(list,g.homeLine);
+  }
+  const all=sorted().reverse();
+  $("table").innerHTML=`<thead><tr><th>When</th><th>Reading</th><th>Heart rate</th><th>Result</th><th>Note</th><th></th></tr></thead><tbody>${
+    all.slice(0,200).map(x=>{const r=interpret(x.s,x.d,x.setting,prefs.guide), dt=new Date(x.t);
+      return `<tr><td>${fmtDate(dt)} ${fmtTime(dt)}${x.setting==="clinic"?"<br><span class='small muted'>clinic</span>":""}</td><td><b>${x.s}/${x.d}</b>${x.irreg?" <span class='pill lv-2'>irregular</span>":""}</td><td>${x.p??"–"}</td><td><span class="pill lv-${r.lv}">${esc(r.plain)}</span></td><td>${esc(x.note)}</td><td><button class="quiet sm" data-del="${esc(x.id)}" aria-label="Delete this reading">Delete</button></td></tr>`;}).join("")
+  }</tbody>`;
+}
+$("table").addEventListener("click",e=>{ const id=e.target.dataset?.del; if(!id) return; readings=readings.filter(r=>r.id!==id); lastResult=null; save(); render(); });
+$("range").addEventListener("change",renderHistory);
+
+function chartSVG(list,line){
+  const W=720,H=280,L=44,R=14,T=14,B=34;
+  const t0=new Date(list[0].t).getTime(), t1=Math.max(new Date(list[list.length-1].t).getTime(), t0+3600e3);
+  const vals=list.flatMap(r=>[r.s,r.d]);
+  const lo=Math.min(50,Math.floor(Math.min(...vals)/10)*10), hi=Math.max(170,Math.ceil(Math.max(...vals)/10)*10);
+  const x=t=>L+(t-t0)/(t1-t0)*(W-L-R), y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
+  let g="";
+  for(let v=lo; v<=hi; v+=20){ g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${v}</text>`; }
+  g+=`<line x1="${L}" x2="${W-R}" y1="${y(line[0])}" y2="${y(line[0])}" stroke="var(--accent)" stroke-dasharray="6 5" opacity=".7"/><text x="${W-R}" y="${y(line[0])-5}" text-anchor="end" font-size="12" fill="var(--accent)">${line[0]}</text>`;
+  g+=`<line x1="${L}" x2="${W-R}" y1="${y(line[1])}" y2="${y(line[1])}" stroke="var(--dia)" stroke-dasharray="6 5" opacity=".7"/><text x="${W-R}" y="${y(line[1])-5}" text-anchor="end" font-size="12" fill="var(--dia)">${line[1]}</text>`;
+  for(let i=0;i<=4;i++){ const t=t0+(t1-t0)*i/4; g+=`<text x="${x(t)}" y="${H-10}" text-anchor="${i===0?"start":i===4?"end":"middle"}" font-size="12" fill="var(--muted)">${new Date(t).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</text>`; }
+  const path=k=>list.map((r,i)=>`${i?"L":"M"}${x(new Date(r.t).getTime()).toFixed(1)},${y(r[k]).toFixed(1)}`).join("");
+  g+=`<path d="${path("s")}L${x(new Date(list[list.length-1].t).getTime()).toFixed(1)},${y(lo)}L${x(t0)},${y(lo)}Z" fill="var(--accent)" opacity=".07"/>`;
+  g+=`<path d="${path("s")}" fill="none" stroke="var(--accent)" stroke-width="2"/><path d="${path("d")}" fill="none" stroke="var(--dia)" stroke-width="2"/>`;
+  const last=list[list.length-1], lx=x(new Date(last.t).getTime());
+  g+=`<circle cx="${lx}" cy="${y(last.s)}" r="5" fill="var(--accent)"/><circle cx="${lx}" cy="${y(last.d)}" r="5" fill="var(--dia)"/>`;
+  g+=`<g font-size="13" font-weight="700"><rect x="${L+8}" y="${T+4}" width="10" height="10" rx="2" fill="var(--accent)"/><text x="${L+24}" y="${T+13}" fill="var(--ink)">Top (SYS)</text><rect x="${L+112}" y="${T+4}" width="10" height="10" rx="2" fill="var(--dia)"/><text x="${L+128}" y="${T+13}" fill="var(--ink)">Bottom (DIA)</text></g>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart of your blood pressure over time">${g}</svg>`;
+}
+
+/* ---------- 7-day check ---------- */
+$("weekStart").addEventListener("change",e=>{ if(e.target.value){ weekStart=e.target.value; save(); renderWeek(); renderReport(); }});
+function weekResult(startKey, list, guideKey){
+  const start=new Date(startKey+"T00:00");
+  const days=[...Array(7)].map((_,i)=>{const d=new Date(start); d.setDate(start.getDate()+i); return dayKey(d);});
+  const homes=list.filter(r=>r.setting==="home");
+  const byDay=days.map(k=>homes.filter(r=>r.t.slice(0,10)===k));
+  const daysWith=byDay.filter(x=>x.length).length;
+  const counted=byDay.slice(1).flat();
+  if(daysWith<4||!counted.length) return {days,byDay,daysWith,ready:false};
+  const S=Math.round(avg(counted.map(r=>r.s))), D=Math.round(avg(counted.map(r=>r.d)));
+  return {days,byDay,daysWith,ready:true,S,D,n:counted.length,r:interpret(S,D,"home",guideKey)};
+}
+function renderWeek(){
+  $("weekStart").value=weekStart;
+  const w=weekResult(weekStart,readings,prefs.guide);
+  let h=`<div></div>`+w.days.map((k,i)=>`<div class="small"><b>Day ${i+1}</b><br>${new Date(k+"T00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div>`).join("");
+  for(const [lab,f] of [["Morning",r=>+r.t.slice(11,13)<12],["Evening",r=>+r.t.slice(11,13)>=12]]){
+    h+=`<div class="small" style="text-align:left"><b>${lab}</b></div>`+w.byDay.map((rs,i)=>{const n=rs.filter(f).length; return `<div class="cell ${n>=2?"done":n===1?"part":""} ${i===0?"skip":""}">${n>=2?"✓":n===1?"1/2":"–"}</div>`;}).join("");
+  }
+  $("weekgrid").innerHTML=h;
+  $("weekResult").innerHTML = w.ready
+    ? `<div class="card result s-${w.r.lv}" style="margin-top:8px"><span class="small muted">Your average from ${w.n} home readings (days 2 to 7)</span><div class="verdict">${esc(w.r.plain)}</div><div class="big">${w.S}/${w.D} <small>mmHg</small></div><p>${esc(weekAdvice(w.r.lv))}</p><p class="small muted">${esc(w.r.guide)}: ${esc(w.r.label)}</p></div>`
+    : `<p class="note" style="margin-top:8px">You have readings on ${w.daysWith} of 7 days so far. Keep going. You need at least 4 days, including some after day 1.</p>`;
+}
+
+/* ---------- activity ---------- */
+function addActivity(type,min){ activities.push({t:localISO(new Date()),type,min:Math.round(min)}); save(); renderMove(); renderToday(); }
+function renderMove(){
+  const cut=new Date(); cut.setDate(cut.getDate()-7);
+  const wk=activities.filter(a=>new Date(a.t)>=cut);
+  const total=wk.filter(a=>!a.type.startsWith("Breathing")).reduce((x,a)=>x+a.min,0);
+  const iso=wk.filter(a=>a.type==="Isometric").length, br=wk.filter(a=>a.type.startsWith("Breathing")).length;
+  $("actStats").innerHTML=`<div class="stat"><span class="small muted">Active minutes (last 7 days)</span><b>${total} of 150</b><div class="progress"><span style="width:${Math.min(100,total/1.5)}%"></span></div></div>
+   <div class="stat"><span class="small muted">Wall sit / squeeze sessions</span><b>${iso} of 3</b><div class="progress"><span style="width:${Math.min(100,iso/3*100)}%"></span></div></div>
+   <div class="stat"><span class="small muted">Calm breathing sessions</span><b>${br}</b></div>`;
+}
+$("actAdd").addEventListener("click",()=>{ const m=+$("actMin").value; if(m>0){ addActivity($("actType").value,m); toast("Saved", `${m} minutes of ${$("actType").value.toLowerCase()} added. Well done!`); }});
+
+let breathTimer=null, breathEnd=0;
+$("breathBtn").addEventListener("click",()=>{
+  if(breathTimer){ stopBreath(false); return; }
+  const mins=+$("breathMin").value; breathEnd=Date.now()+mins*60000; let inhale=true;
+  const step=()=>{ if(Date.now()>=breathEnd){ stopBreath(true,mins); return; }
+    $("orb").classList.toggle("in",inhale); $("pacerLabel").textContent=inhale?"Breathe in…":"Breathe out…"; inhale=!inhale; };
+  step(); breathTimer=setInterval(step,5500); $("breathBtn").textContent="Stop";
+});
+function stopBreath(done,mins){ clearInterval(breathTimer); breathTimer=null; $("orb").classList.remove("in"); $("breathBtn").textContent="Start";
+  $("pacerLabel").textContent=done?"Well done. Session saved.":"Stopped"; if(done) addActivity("Breathing / prayer / meditation",mins); }
+
+let iso=null;
+const fmtMS = s => `${Math.floor(s/60)}:${pad(s%60)}`;
+$("isoBtn").addEventListener("click",()=>{
+  if(iso) return;
+  iso={round:1,phase:"hold",end:Date.now()+120000};
+  $("isoLabel").textContent=`Hold 1 of 4: ${$("isoType").value}`;
+  iso.tick=setInterval(()=>{
+    const left=Math.max(0,Math.round((iso.end-Date.now())/1000)); $("isoTime").textContent=fmtMS(left);
+    if(left>0) return;
+    if(iso.phase==="hold"){ if(iso.round===4){ clearInterval(iso.tick); iso=null; $("isoLabel").textContent="All done. Session saved."; addActivity("Isometric",16); return; }
+      iso.phase="rest"; iso.end=Date.now()+120000; $("isoLabel").textContent=`Rest. Next is hold ${iso.round+1}`; }
+    else { iso.round++; iso.phase="hold"; iso.end=Date.now()+120000; $("isoLabel").textContent=`Hold ${iso.round} of 4: ${$("isoType").value}`; }
+  },500);
+});
+$("isoStop").addEventListener("click",()=>{ if(iso){ clearInterval(iso.tick); iso=null; } $("isoTime").textContent="2:00"; $("isoLabel").textContent="Hold 1 of 4"; });
+
+let walk=null;
+$("walkMin").addEventListener("change",()=>{ if(!walk) $("walkTime").textContent=fmtMS(+$("walkMin").value*60); });
+$("walkBtn").addEventListener("click",()=>{
+  if(walk) return; const mins=+$("walkMin").value, end=Date.now()+mins*60000;
+  walk=setInterval(()=>{ const left=Math.max(0,Math.round((end-Date.now())/1000)); $("walkTime").textContent=fmtMS(left);
+    if(!left){ clearInterval(walk); walk=null; addActivity("Walking",mins); toast("Walk complete", `${mins} minutes added to your week. Well done!`); } },500);
+});
+$("walkStop").addEventListener("click",()=>{ if(walk){ clearInterval(walk); walk=null; } $("walkTime").textContent=fmtMS(+$("walkMin").value*60); });
+
+let rest=null;
+$("restBtn").addEventListener("click",()=>{
+  if(rest){ clearInterval(rest); rest=null; $("restOut").textContent=""; $("restBtn").textContent="Start 5-minute rest timer"; return; }
+  const end=Date.now()+300000; $("restBtn").textContent="Cancel timer";
+  rest=setInterval(()=>{ const left=Math.max(0,Math.round((end-Date.now())/1000)); $("restOut").textContent=`Sit quietly… ${fmtMS(left)}`;
+    if(!left){ clearInterval(rest); rest=null; $("restBtn").textContent="Start 5-minute rest timer"; $("restOut").textContent="Ready. Take your reading now."; } },500);
+});
+
+/* ---------- reminders ---------- */
+function bindPref(id,key,kind){ const el=$(id); el[kind==="check"?"checked":"value"]=prefs[key];
+  el.addEventListener("change",()=>{ prefs[key]= kind==="check"?el.checked:el.value; save(); renderReminders(); renderToday(); }); }
+bindPref("amTime","am"); bindPref("pmTime","pm"); bindPref("bpOn","bpOn","check");
+bindPref("moveEvery","moveEvery"); bindPref("moveFrom","moveFrom"); bindPref("moveTo","moveTo"); bindPref("moveOn","moveOn","check");
+
+function gcalLink(title,time,details){
+  const tz=(Intl.DateTimeFormat().resolvedOptions().timeZone)||"UTC";
+  const d=new Date(); d.setDate(d.getDate()+1); const [h,m]=time.split(":").map(Number); d.setHours(h,m,0,0);
+  const e=new Date(d.getTime()+10*60000);
+  const f=x=>`${x.getFullYear()}${pad(x.getMonth()+1)}${pad(x.getDate())}T${pad(x.getHours())}${pad(x.getMinutes())}00`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&details=${encodeURIComponent(details)}&dates=${f(d)}/${f(e)}&ctz=${encodeURIComponent(tz)}&recur=${encodeURIComponent("RRULE:FREQ=DAILY")}`;
+}
+function renderReminders(){
+  const det="Sit quietly 5 minutes, feet flat, arm resting at heart level. Take 2 readings 1 minute apart and add them to Steady.";
+  $("calLinks").innerHTML=`<a class="small" href="${gcalLink("Check blood pressure (morning)",prefs.am,det)}">Add morning reminder to Google Calendar</a><a class="small" href="${gcalLink("Check blood pressure (evening)",prefs.pm,det)}">Add evening reminder to Google Calendar</a>`;
+  $("medList").innerHTML = prefs.meds.length ? prefs.meds.map((m,i)=>`<div class="med"><b>${esc(m.time)}</b> ${esc(m.name)} <button class="quiet sm" data-med="${i}">Remove</button></div>`).join("") : `<p class="small muted">No medicines added yet.</p>`;
+}
+$("medList").addEventListener("click",e=>{ const i=e.target.dataset?.med; if(i===undefined) return; prefs.meds.splice(+i,1); save(); renderReminders(); renderReport(); });
+$("medAdd").addEventListener("click",()=>{ const n=$("medName").value.trim(), t=$("medTime").value; if(!n||!t) return; prefs.meds.push({name:n,time:t}); $("medName").value=""; save(); renderReminders(); renderReport(); });
+
+let swReg=null;
+$("notifBtn").addEventListener("click",async()=>{
+  try{ if(!("Notification" in window)) throw 0; const p=await Notification.requestPermission(); $("notifOut").textContent = p==="granted"?"Notifications are on.":"Notifications are blocked. On-screen reminders and phone alarms still work."; }
+  catch(e){ $("notifOut").textContent="Notifications aren't available here. On-screen reminders and phone alarms still work."; }
+});
+$("testBtn").addEventListener("click",()=>notify("Time to check your blood pressure","Sit quietly for 5 minutes first.","Add a reading",()=>{location.hash="check";}));
+
+let toastAction=null;
+function toast(title,body,actLabel,act){ $("toastTitle").textContent=title; $("toastBody").textContent=body;
+  toastAction=act||null; $("toastAct").classList.toggle("hide",!act); if(act) $("toastAct").textContent=actLabel; $("toast").classList.add("on"); }
+$("toastClose").addEventListener("click",()=>$("toast").classList.remove("on"));
+$("toastAct").addEventListener("click",()=>{ $("toast").classList.remove("on"); if(toastAction) toastAction(); });
+function notify(title,body,actLabel,act){
+  toast(title,body,actLabel,act);
+  try{ if(window.Notification && Notification.permission==="granted"){ if(swReg) swReg.showNotification(title,{body,icon:"icons/icon-192.png"}); else new Notification(title,{body}); } }catch(e){}
+}
+
+const fired=new Set(); let lastMove=Date.now();
+const MOVE_TIPS=["Stand up and walk for 3 to 5 minutes.","Walk to the end of the street and back.","Take your next phone call standing or walking.","Do 1 minute of calm breathing, then stretch your arms and legs."];
+setInterval(()=>{
+  const now=new Date(), hm=`${pad(now.getHours())}:${pad(now.getMinutes())}`, dk=dayKey(now);
+  const once=(key,fn)=>{ if(!fired.has(dk+key)){ fired.add(dk+key); fn(); } };
+  if(prefs.bpOn){
+    if(hm===prefs.am) once("am",()=>notify("Morning blood pressure check","Before breakfast and medicine: sit quietly 5 minutes, then take 2 readings.","Add a reading",()=>{location.hash="check";}));
+    if(hm===prefs.pm) once("pm",()=>notify("Evening blood pressure check","Before your evening meal: sit quietly 5 minutes, then take 2 readings.","Add a reading",()=>{location.hash="check";})); }
+  prefs.meds.forEach((m,i)=>{ if(hm===m.time) once("med"+i+m.name,()=>notify("Medicine time",`Time to take ${m.name}.`)); });
+  if(prefs.moveOn && hm>=prefs.moveFrom && hm<prefs.moveTo && Date.now()-lastMove >= (+prefs.moveEvery)*60000){
+    lastMove=Date.now(); notify("Time to move",MOVE_TIPS[Math.floor(Math.random()*MOVE_TIPS.length)],"I moved for 5 minutes",()=>addActivity("Walking",5)); }
+},30000);
+
+/* ---------- learn: thresholds ---------- */
+function renderThresholds(){
+  $("thresholds").innerHTML=`<thead><tr><th>Guideline</th><th>Band</th><th>Clinic</th><th>Home</th></tr></thead><tbody>
+  <tr><td rowspan="4">ISH 2020</td><td>Normal</td><td>&lt;130/85</td><td>&lt;135/85</td></tr>
+  <tr><td>High-normal</td><td>130–139 / 85–89</td><td>–</td></tr>
+  <tr><td>Grade 1</td><td>140–159 / 90–99</td><td>135/85 and above</td></tr>
+  <tr><td>Grade 2</td><td>160/100 and above</td><td>160/100 and above</td></tr>
+  <tr><td rowspan="3">NICE NG136</td><td>Stage 1</td><td>140/90 to 159/99</td><td>135/85 to 149/94</td></tr>
+  <tr><td>Stage 2</td><td>160/100 to 179/119</td><td>150/95 and above</td></tr>
+  <tr><td>Stage 3 (severe)</td><td>180/120 and above</td><td>same</td></tr>
+  <tr><td rowspan="2">ESC 2024</td><td>Elevated</td><td>120–139 / 70–89</td><td>120–134 / 70–84</td></tr>
+  <tr><td>Hypertension</td><td>140/90 and above</td><td>135/85 and above</td></tr>
+  <tr><td rowspan="3">ACC/AHA 2025</td><td>Elevated</td><td colspan="2">120–129 and below 80</td></tr>
+  <tr><td>Stage 1</td><td colspan="2">130–139 or 80–89</td></tr>
+  <tr><td>Stage 2</td><td colspan="2">140 or 90 and above</td></tr>
+  <tr><td>All</td><td>Low</td><td colspan="2">below 90/60</td></tr>
+  <tr><td>All</td><td>Dangerously high</td><td colspan="2">180/120 and above. With chest pain, breathlessness, weakness, trouble speaking or seeing, or a very bad headache: call the emergency number</td></tr></tbody>`;
+}
+
+/* ---------- share ---------- */
+function summaryBlock(days){
+  const l=inRange(days); if(!l.length) return `Last ${days} days: no readings\n`;
+  const S=Math.round(avg(l.map(r=>r.s))), D=Math.round(avg(l.map(r=>r.d))), ps=l.map(r=>r.p).filter(Boolean);
+  const hi=l.filter(r=>r.s>=180||r.d>=120).length, ir=l.filter(r=>r.irreg).length;
+  return `Last ${days} days: ${l.length} readings, average ${S}/${D} mmHg${ps.length?`, heart rate ${Math.round(avg(ps))}`:""}\n  Range: top ${Math.min(...l.map(r=>r.s))}-${Math.max(...l.map(r=>r.s))}, bottom ${Math.min(...l.map(r=>r.d))}-${Math.max(...l.map(r=>r.d))}\n  Readings 180/120 or higher: ${hi}. Irregular heartbeat sign: ${ir}\n`;
+}
+function renderReport(){
+  const w=weekResult(weekStart,readings,prefs.guide);
+  const cut=new Date(); cut.setDate(cut.getDate()-7);
+  const act=activities.filter(a=>new Date(a.t)>=cut);
+  let t=`MY BLOOD PRESSURE SUMMARY (Steady app)\n${new Date().toLocaleString("en-GB")}\nGuideline: ${GUIDES[prefs.guide].name}\n${readings.some(r=>r.ex)?"NOTE: includes example data\n":""}\n`;
+  t+=w.ready?`7-day home check (from ${weekStart}, day 1 not counted): ${w.S}/${w.D} mmHg from ${w.n} readings - ${w.r.plain}\n\n`:`7-day home check: not finished (${w.daysWith} of 7 days)\n\n`;
+  t+=summaryBlock(7)+summaryBlock(30)+"\n";
+  t+=`Takes blood pressure medicine: ${prefs.onMeds?"yes":"no / not stated"}\n`;
+  if(prefs.meds.length) t+=`Medicines: ${prefs.meds.map(m=>`${m.name} at ${m.time}`).join("; ")}\n`;
+  t+=`Activity last 7 days: ${act.reduce((x,a)=>x+a.min,0)} minutes\n`;
+  const notes=sorted().filter(r=>r.note).slice(-6);
+  if(notes.length) t+="\nNotes:\n"+notes.map(r=>`  ${r.t.replace("T"," ")}  ${r.s}/${r.d}  ${r.note}`).join("\n")+"\n";
+  $("reportText").value=t;
+  $("waLink").href="https://wa.me/?text="+encodeURIComponent(t);
+  $("smsLink").href="sms:?&body="+encodeURIComponent(t.slice(0,600));
+}
+const backupJSON = () => JSON.stringify({app:"steady",v:1,readings,activities,prefs,weekStart});
+async function copy(text,msg){ try{ await navigator.clipboard.writeText(text); $("copyOut").textContent=msg; }catch(e){ $("copyOut").textContent="Copy didn't work. Press and hold the text to copy it."; } }
+$("copyReport").addEventListener("click",()=>copy($("reportText").value,"Summary copied. Paste it into a message."));
+$("copyCsv").addEventListener("click",()=>copy("datetime,systolic,diastolic,pulse,setting,arm,irregular,note\n"+sorted().map(r=>[r.t,r.s,r.d,r.p??"",r.setting,r.arm,r.irreg?"yes":"no",`"${(r.note||"").replace(/"/g,'""')}"`].join(",")).join("\n"),"Copied. Paste it into a spreadsheet."));
+$("copyBackup").addEventListener("click",()=>copy(backupJSON(),"Backup copied. Send it to yourself to keep it safe."));
+$("waBackup").addEventListener("click",e=>{ e.currentTarget.href="https://wa.me/?text="+encodeURIComponent(backupJSON()); });
+$("restore").addEventListener("click",()=>{ try{ const o=JSON.parse($("backupText").value); if(!Array.isArray(o.readings)) throw 0;
+  readings=o.readings; activities=o.activities||[]; prefs={...prefs,...(o.prefs||{})}; weekStart=o.weekStart||weekStart; save(); applyLook(); $("copyOut").textContent="Backup restored."; lastResult=null; render(); }
+  catch(e){ $("copyOut").textContent="That isn't a Steady backup. Paste the whole backup text."; } });
+$("wipe").addEventListener("click",()=>$("wipeConfirm").classList.remove("hide"));
+$("wipeNo").addEventListener("click",()=>$("wipeConfirm").classList.add("hide"));
+$("wipeYes").addEventListener("click",()=>{ readings=[]; activities=[]; prefs.meds=[]; lastResult=null; save(); $("wipeConfirm").classList.add("hide"); render(); });
+$("clearExamples").addEventListener("click",()=>{ readings=readings.filter(r=>!r.ex); lastResult=null; save(); render(); });
+$("aboutLink").addEventListener("click",()=>setTimeout(()=>$("about").scrollIntoView(),50));
+
+/* ---------- offline / install ---------- */
+function netStatus(){ const on=navigator.onLine; $("netPill").textContent= on?"Works offline":"Offline: your data is safe"; $("netPill").className="pill "+(on?"lv-0":"lv-1"); }
+window.addEventListener("online",netStatus); window.addEventListener("offline",netStatus);
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredPrompt=e; $("installBtn").classList.remove("hide"); });
+$("installBtn").addEventListener("click",async()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); try{ await deferredPrompt.userChoice; }catch(e){} deferredPrompt=null; $("installBtn").classList.add("hide"); });
+if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){
+  navigator.serviceWorker.register("sw.js").then(r=>{ swReg=r; $("swStatus").textContent="Offline mode is ready on this phone."; })
+    .catch(()=>{ $("swStatus").textContent="Offline mode couldn't start in this browser. Try Chrome or Safari."; });
+} else { $("swStatus").textContent="Offline mode turns on when Steady is opened from its web address."; }
+
+/* ---------- render ---------- */
+function render(){
+  $("exampleBanner").classList.toggle("hide",!readings.some(r=>r.ex));
+  renderSetup(); renderResult(); renderToday(); renderHistory(); renderWeek(); renderMove(); renderReminders(); renderThresholds(); renderReport();
+}
+applyLook(); netStatus(); route();
+</script>
+</body>
+</html>
