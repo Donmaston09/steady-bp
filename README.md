@@ -12,6 +12,7 @@ Contact: donmaston09@gmail.com
 
 - **Explains each reading in plain language.** Results show as a traffic light (Low, Normal, A little high, High, Too high, Dangerously high) with clear next steps. A "Read this aloud" button helps people who find reading hard.
 - **Emergency safety net.** Readings of 180/120 or higher, together with symptoms such as chest pain, weakness, or trouble speaking or seeing, bring up an emergency alert with a call button: 112 in Nigeria, 999 in the UK.
+- **Low blood pressure support.** Readings below 90/60 (NHS definition) get advice that depends on symptoms: no action if there are no symptoms, self-help if dizzy, a same-day alert after fainting, and an emergency alert for signs of shock. A guided **standing test** detects postural (orthostatic) hypotension, defined as a fall of 20 mmHg or more in the top number or 10 mmHg or more in the bottom number on standing. A setting lets users say low blood pressure is normal for them.
 - **7-day home check** using the NICE home-monitoring method: morning and evening readings for 7 days, with day 1 left out. This gives the average that clinicians use.
 - **Trend chart and history**, with averages, highest and lowest readings, and heart rate.
 - **Reminders** for blood pressure checks, moving more and medicines. Users are also guided to set phone alarms, which work offline when the app is closed.

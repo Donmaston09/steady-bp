@@ -239,6 +239,40 @@ details[open] summary{margin-bottom:10px}
         <div class="card"><h3>Today</h3><div id="today"></div></div>
       </div>
     </div>
+    <div class="card" id="standCard">
+      <h2>Standing test: does your blood pressure drop when you stand up?</h2>
+      <p>Do this test if you feel dizzy, light-headed or faint when you get up from a chair or bed.</p>
+      <p class="note"><b>Stay safe:</b> stand next to a chair or bed, and have someone with you if you can. If you feel faint at any point, sit or lie down straight away and stop the test.</p>
+      <div class="grid2">
+        <fieldset>
+          <legend>Step 1: sitting or lying down</legend>
+          <p class="small muted">Rest for 5 minutes, then measure.</p>
+          <div class="row">
+            <label for="st0s">Top<input class="num2" type="number" id="st0s" inputmode="numeric"></label><span class="slash">/</span>
+            <label for="st0d">Bottom<input class="num2" type="number" id="st0d" inputmode="numeric"></label>
+            <label for="st0p">Heart rate<input class="num2" type="number" id="st0p" inputmode="numeric"></label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Step 2: after standing up</legend>
+          <p class="small muted">Stand up, tap the timer, and keep the cuff on. Measure at 1 minute, and again at 3 minutes if you can.</p>
+          <div class="row"><button type="button" class="quiet sm" id="standTimerBtn">I'm standing: start timer</button><span id="standTimerOut" class="small" aria-live="polite"></span></div>
+          <div class="row">
+            <label for="st1s">1 min top<input class="num2" type="number" id="st1s" inputmode="numeric"></label><span class="slash">/</span>
+            <label for="st1d">Bottom<input class="num2" type="number" id="st1d" inputmode="numeric"></label>
+            <label for="st1p">Heart rate<input class="num2" type="number" id="st1p" inputmode="numeric"></label>
+          </div>
+          <div class="row">
+            <label for="st3s">3 min top<input class="num2" type="number" id="st3s" inputmode="numeric" placeholder="optional"></label><span class="slash">/</span>
+            <label for="st3d">Bottom<input class="num2" type="number" id="st3d" inputmode="numeric" placeholder="optional"></label>
+          </div>
+        </fieldset>
+      </div>
+      <label class="inline"><input type="checkbox" id="stDizzy"> I felt dizzy, light-headed or faint when I stood up</label>
+      <p id="standErr" style="color:var(--crit);font-weight:700" aria-live="assertive"></p>
+      <button type="button" id="standCheck" class="big">See my standing test result</button>
+      <div id="standResult" aria-live="polite"></div>
+    </div>
   </section>
 
   <!-- HISTORY -->
@@ -403,6 +437,50 @@ details[open] summary{margin-bottom:10px}
         </ol>
       </div>
     </div>
+    <div class="card" id="lowbp">
+      <h2>Low blood pressure</h2>
+      <p>Low blood pressure means a reading below <b>90/60</b>. Many healthy people have it and feel completely well. It only needs attention when it causes symptoms.</p>
+      <div class="grid2">
+        <div>
+          <h3>Signs it may be causing problems</h3>
+          <ul class="clean">
+            <li>Feeling dizzy or light-headed</li><li>Feeling sick</li><li>Blurred vision</li><li>Feeling weak</li><li>Confusion</li><li>Fainting</li>
+          </ul>
+          <p class="small muted">If these happen when you stand up, your blood pressure may be dropping on standing (postural hypotension). Use the <a href="#check" id="toStand">standing test</a>.</p>
+        </div>
+        <div>
+          <h3>Common causes</h3>
+          <ul class="clean">
+            <li>Being fit and healthy, or it runs in your family</li>
+            <li>Not drinking enough, hot weather, vomiting or diarrhoea</li>
+            <li>Some medicines, including blood pressure tablets and water tablets</li>
+            <li>Pregnancy, diabetes and some other medical conditions</li>
+            <li>Getting older</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Things that help</h3>
+          <ul class="clean">
+            <li>Get up slowly. Sit on the edge of the bed for a minute before standing.</li>
+            <li>Drink more water, especially in hot weather.</li>
+            <li>Eat small, frequent meals, and rest after eating.</li>
+            <li>Avoid standing still or sitting for long periods.</li>
+            <li>Avoid bending down or changing position suddenly.</li>
+            <li>Limit alcohol.</li>
+            <li>Don't add extra salt unless your health worker tells you to.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>When to get help</h3>
+          <ul class="clean">
+            <li><b>See a health worker</b> if you keep feeling dizzy or fainting, or if you take blood pressure medicine and your readings are low.</li>
+            <li><b>Get help the same day</b> if you fainted but recovered quickly.</li>
+            <li><b>Call the emergency number now</b> if low blood pressure comes with chest pain, breathlessness, confusion, or cold, clammy, pale skin, or if someone faints and doesn't wake up quickly.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="small muted">Sources: <a href="https://www.nhs.uk/conditions/low-blood-pressure-hypotension/">NHS: Low blood pressure</a>; <a href="https://doi.org/10.1161/HYP.0000000000000236">AHA scientific statement on orthostatic hypotension, Hypertension 2024</a>.</p>
+    </div>
     <div class="card">
       <h2>How Steady reads your numbers</h2>
       <div class="tablewrap"><table id="thresholds"></table></div>
@@ -498,6 +576,7 @@ details[open] summary{margin-bottom:10px}
         </label>
         <p class="small muted">If your health worker uses a different guideline, follow their advice.</p>
         <label class="inline"><input type="checkbox" id="onMedsSetup"> I take blood pressure medicine</label>
+        <label class="inline"><input type="checkbox" id="lowNormalSetup"> My health worker says low blood pressure is normal for me</label>
       </div>
       <div class="card">
         <h2>Use Steady without internet</h2>
@@ -550,8 +629,10 @@ const COUNTRIES = {
 };
 const C = () => COUNTRIES[prefs.country||"ng"];
 
-const SYMPTOMS = ["Chest pain","Shortness of breath","Back pain","Numbness or weakness","Problems seeing","Difficulty speaking","Very bad headache","Confusion","Dizziness or fainting"];
-const EMERGENCY_SYM = SYMPTOMS.slice(0,8);
+const SYMPTOMS = ["Chest pain","Shortness of breath","Back pain","Numbness or weakness","Problems seeing or blurred vision","Difficulty speaking","Very bad headache","Confusion","Dizzy or light-headed","Feeling sick","Fainted","Cold, clammy or pale skin"];
+const EMERGENCY_SYM = SYMPTOMS.slice(0,8);           // red flags with very high BP
+const LOW_EMERG = ["Chest pain","Shortness of breath","Confusion","Cold, clammy or pale skin"]; // red flags with low BP
+const LOW_SYM = ["Dizzy or light-headed","Feeling sick","Problems seeing or blurred vision","Numbness or weakness"];
 
 /* ---------- guideline logic ---------- */
 const PLAIN = {low:"Low",0:"Normal",1:"A little high",2:"High",3:"Too high",4:"Dangerously high"};
@@ -605,9 +686,14 @@ function interpret(s,d,setting,guideKey){
 function nextSteps(lv, sym, onMeds){
   const c=C(), hasEmerg = sym.some(x => EMERGENCY_SYM.includes(x));
   switch(lv){
-    case "low": return sym.includes("Dizziness or fainting")
-      ? `Sit or lie down and drink some water. If you keep feeling faint, ${c.urgent}. If you fainted and hurt yourself, or you have chest pain, call ${c.emerg}.`
-      : `Low readings with no symptoms are often normal for some people. If you feel dizzy, faint or very tired, or you take blood pressure medicine, tell your ${c.worker}.`;
+    case "low": {
+      if(sym.some(x=>LOW_EMERG.includes(x))) return c.emergText+" Low blood pressure with these symptoms can be a sign of shock, serious infection, bleeding or a heart problem.";
+      if(sym.includes("Fainted")) return `Lie down and raise your legs on a pillow or chair. Call ${c.emerg} if you were badly hurt, didn't wake up within a minute, or faint again. Otherwise, ${c.urgent}.`;
+      const med = onMeds ? ` Because you take blood pressure medicine, tell your ${c.worker} soon. Your dose may need changing, but don't stop or change it on your own.` : "";
+      if(sym.some(x=>LOW_SYM.includes(x))) return `Sit or lie down until you feel better, and drink some water. Stand up slowly. If these feelings keep coming back, see your ${c.worker}.`+med+" If you feel dizzy when you stand up, try the standing test below.";
+      if(prefs.lowNormal) return "This fits what your health worker has told you: low blood pressure is normal for you. Keep an eye out for dizziness or fainting."+med;
+      return `Low blood pressure with no symptoms is often normal, especially in people who are fit and active. You don't need to do anything unless you feel unwell. Drink enough water, especially in hot weather.`+med;
+    }
     case 0: return "Well done. Keep eating well and staying active. Check again regularly.";
     case 1: return "This isn't high blood pressure yet, but it's starting to rise. Eating less salt and moving more can bring it down. Check again in a few days.";
     case 2: return `One reading isn't enough to know for sure. Do the 7-day home check, then show the average to your ${c.worker}.`;
@@ -633,7 +719,7 @@ const onMeds = () => !!prefs.onMeds;
 /* ---------- state ---------- */
 let readings = store.get("readings", null);
 let activities = store.get("activities", []);
-let prefs = Object.assign({guide:"ish", country:null, am:"07:00", pm:"19:00", bpOn:true, moveOn:true, moveEvery:"60", moveFrom:"09:00", moveTo:"18:00", meds:[], onMeds:false, size:1, theme:"auto"}, store.get("prefs", {}));
+let prefs = Object.assign({guide:"ish", country:null, am:"07:00", pm:"19:00", bpOn:true, moveOn:true, moveEvery:"60", moveFrom:"09:00", moveTo:"18:00", meds:[], onMeds:false, lowNormal:false, size:1, theme:"auto"}, store.get("prefs", {}));
 let weekStart = store.get("weekStart", null);
 
 function seedExamples(){
@@ -679,11 +765,12 @@ function renderSetup(){
   $("countryInfo").textContent = prefs.country ? C().info : "Not chosen yet.";
   choiceRow($("sizeChoices"), [[1,"Normal"],[1.15,"Large"],[1.3,"Extra large"]], prefs.size, v=>{prefs.size=+v; save(); applyLook(); renderSetup();});
   choiceRow($("themeChoices"), [["auto","Automatic"],["light","Light"],["dark","Dark"]], prefs.theme, v=>{prefs.theme=v; save(); applyLook(); renderSetup();});
-  $("guide").value=prefs.guide; $("onMedsSetup").checked=prefs.onMeds;
+  $("guide").value=prefs.guide; $("onMedsSetup").checked=prefs.onMeds; $("lowNormalSetup").checked=!!prefs.lowNormal;
   $("footEmerg").textContent = `In an emergency call ${C().emerg}.`;
 }
 $("guide").addEventListener("change", e=>{ prefs.guide=e.target.value; save(); render(); });
 $("onMedsSetup").addEventListener("change", e=>{ prefs.onMeds=e.target.checked; save(); render(); });
+$("lowNormalSetup").addEventListener("change", e=>{ prefs.lowNormal=e.target.checked; save(); render(); });
 
 /* ---------- routing ---------- */
 const VIEWS=["check","history","week","move","reminders","learn","share","setup"];
@@ -746,6 +833,7 @@ function renderResult(){
   const extra=[];
   if(set.length===2 && Math.abs(set[0].s-set[1].s)>=10) extra.push("Your two readings are quite different. Rest for a minute and take a third reading.");
   if(set.some(x=>x.irreg)) extra.push(`Your machine showed an irregular heartbeat sign. This can be a sign of a heart rhythm problem, and machines are less accurate when the heartbeat is irregular. Ask your ${c.worker} to check your pulse.`);
+  if(d<60 && r.lv!=="low") extra.push(`Your bottom number is below 60. This is common in older adults, but mention it to your ${c.worker}, especially if you feel dizzy or tired.`);
   if(p && p>100) extra.push(`Your heart rate is over 100 while resting. If it stays this high, tell your ${c.worker}.`);
   if(p && p<50) extra.push(`Your heart rate is under 50. This can be normal for very fit people, but tell your ${c.worker} if you feel dizzy, breathless or tired.`);
   const scaleKeys=["low",0,1,2,3], onKey = r.lv===4?3:r.lv;
@@ -763,6 +851,8 @@ function renderResult(){
   $("speakBtn").onclick=()=>speak(`Your blood pressure is ${s} over ${d}. This is ${r.plain}. ${steps} ${extra.join(" ")}`);
   const emerg = r.lv===4 && sym.some(x=>EMERGENCY_SYM.includes(x));
   if(emerg){ crisis.innerHTML=`<h2>Get help now. Call ${c.emerg}.</h2><p><b>${s}/${d}</b> with ${esc(sym.filter(x=>EMERGENCY_SYM.includes(x)).join(", ").toLowerCase())} can be an emergency. Don't wait to see if it goes down, and don't drive yourself.</p><a class="btn" href="tel:${c.emerg}">Call ${c.emerg}</a>`; crisis.classList.remove("hide"); }
+  else if(r.lv==="low" && sym.some(x=>LOW_EMERG.includes(x))){ crisis.innerHTML=`<h2>Get help now. Call ${c.emerg}.</h2><p><b>${s}/${d}</b> with ${esc(sym.filter(x=>LOW_EMERG.includes(x)).join(", ").toLowerCase())} can be a sign of shock or a heart problem. Lie down with your legs raised while you wait. Don't drive yourself.</p><a class="btn" href="tel:${c.emerg}">Call ${c.emerg}</a>`; crisis.classList.remove("hide"); }
+  else if(r.lv==="low" && sym.includes("Fainted")){ crisis.innerHTML=`<h2>You fainted</h2><p>Lie down and raise your legs. Call ${c.emerg} if you were badly hurt, didn't wake up within a minute, faint again, or have chest pain or breathlessness. Otherwise, ${c.urgent}.</p>`; crisis.classList.remove("hide"); }
   else if(r.lv===4){ crisis.innerHTML=`<h2>Very high reading</h2><p>Sit quietly for 5 minutes and check again. If it's still 180/120 or higher, ${c.urgent}. Call ${c.emerg} straight away if you get chest pain, breathlessness, weakness, trouble speaking or seeing, or a very bad headache.</p>`; crisis.classList.remove("hide"); }
   else crisis.classList.add("hide");
 }
@@ -779,6 +869,53 @@ function renderToday(){
     <tr><td>Activity today</td><td><b>${mins}</b> min</td></tr></tbody></table>`;
 }
 
+/* ---------- standing (postural) test ---------- */
+let standTests = store.get("standTests", []);
+let standTimer=null;
+$("standTimerBtn").addEventListener("click",()=>{
+  if(standTimer){ clearInterval(standTimer); standTimer=null; $("standTimerOut").textContent=""; $("standTimerBtn").textContent="I'm standing: start timer"; return; }
+  const start=Date.now(); let said1=false, said3=false; $("standTimerBtn").textContent="Stop timer";
+  standTimer=setInterval(()=>{ const sec=Math.floor((Date.now()-start)/1000);
+    $("standTimerOut").textContent=`Standing for ${fmtMS(sec)}`+(sec>=60&&sec<180?" · measure now (1 minute)":"")+(sec>=180?" · measure again now (3 minutes)":"");
+    if(sec>=60&&!said1){ said1=true; try{navigator.vibrate&&navigator.vibrate(400);}catch(e){} toast("1 minute","Take your standing reading now."); }
+    if(sec>=180&&!said3){ said3=true; try{navigator.vibrate&&navigator.vibrate([300,150,300]);}catch(e){} toast("3 minutes","Take your second standing reading now, then sit down."); clearInterval(standTimer); standTimer=null; $("standTimerBtn").textContent="I'm standing: start timer"; }
+  },500);
+});
+function standingResult(sit, st1, st3){
+  const drops=[st1,st3].filter(Boolean).map(x=>[sit[0]-x[0], sit[1]-x[1]]);
+  const dropS=Math.max(...drops.map(x=>x[0])), dropD=Math.max(...drops.map(x=>x[1]));
+  return {dropS, dropD, oh: dropS>=20 || dropD>=10};
+}
+$("standCheck").addEventListener("click",()=>{
+  const n=id=>{ const v=$(id).value.trim(); return v===""?null:Number(v); };
+  const ok=(a,b)=> a!==null&&b!==null&&a>=50&&a<=300&&b>=30&&b<=200&&a>b;
+  const sit=[n("st0s"),n("st0d")], st1=[n("st1s"),n("st1d")], st3=[n("st3s"),n("st3d")];
+  if(!ok(...sit)||!ok(...st1)){ $("standErr").textContent="Please type the sitting reading and the 1-minute standing reading (top and bottom numbers)."; return; }
+  const has3 = st3[0]!==null||st3[1]!==null;
+  if(has3 && !ok(...st3)){ $("standErr").textContent="The 3-minute reading doesn't look right. Check it or leave it empty."; return; }
+  $("standErr").textContent="";
+  const res=standingResult(sit, st1, has3?st3:null), c=C(), dizzy=$("stDizzy").checked;
+  const now=new Date(), sid=Math.random().toString(36).slice(2);
+  const mk=(v,p,mins,pos,note)=>({id:sid+mins,sid,t:localISO(new Date(now.getTime()+mins*60000)),s:v[0],d:v[1],p,setting:"home",arm:"Left",pos,irreg:false,sym:dizzy&&pos==="standing"?["Dizzy or light-headed"]:[],note});
+  readings.push(mk(sit,n("st0p"),0,"sitting","Standing test: sitting"), mk(st1,n("st1p"),1,"standing","Standing test: 1 min standing"));
+  if(has3) readings.push(mk(st3,null,3,"standing","Standing test: 3 min standing"));
+  standTests.push({t:localISO(now),sit,st1,st3:has3?st3:null,dropS:res.dropS,dropD:res.dropD,oh:res.oh,dizzy});
+  store.set("standTests",standTests); save();
+  const lowStand = st1[0]<90||st1[1]<60||(has3&&(st3[0]<90||st3[1]<60));
+  let lv, title, msg;
+  if(res.oh){ lv=2; title="Your blood pressure drops when you stand";
+    msg=`Your top number fell by ${Math.max(0,res.dropS)} and your bottom number by ${Math.max(0,res.dropD)}. A fall of 20 or more in the top number, or 10 or more in the bottom number, is called postural (orthostatic) hypotension. It can cause dizziness and falls. Please tell your ${c.worker} soon, especially if you take blood pressure medicine, have diabetes or are older. Don't stop any medicine on your own. Until then: get up slowly, sit on the edge of the bed for a minute before standing, and drink enough water.`; }
+  else if(dizzy||lowStand){ lv=1; title="No big drop, but keep an eye on it";
+    msg=`Your blood pressure didn't fall enough to count as postural hypotension${lowStand?", but your standing reading is low (below 90/60)":""}. If you keep feeling dizzy or faint, see your ${c.worker}. Dizziness can have other causes too.`; }
+  else { lv=0; title="No big drop when you stand"; msg="Your blood pressure stayed steady when you stood up. That's a good result."; }
+  $("standResult").innerHTML=`<div class="card result s-${lv}"><div class="verdict" style="color:var(--${["ok","elev","warn"][lv]})">${esc(title)}</div>
+    <p class="small muted">Sitting ${sit.join("/")} → standing 1 min ${st1.join("/")}${has3?` → 3 min ${st3.join("/")}`:""}</p><p>${esc(msg)}</p>
+    <div class="row"><button type="button" class="quiet sm" id="standSpeak">Read this aloud</button></div></div>`;
+  $("standSpeak").onclick=()=>speak(title+". "+msg);
+  ["st0s","st0d","st0p","st1s","st1d","st1p","st3s","st3d"].forEach(id=>$(id).value=""); $("stDizzy").checked=false;
+  lastResult=null; renderHistory(); renderToday(); renderReport();
+});
+
 /* ---------- history ---------- */
 function inRange(days){ const cut=new Date(); cut.setDate(cut.getDate()-days); return sorted().filter(r=>new Date(r.t)>=cut); }
 function renderHistory(){
@@ -793,13 +930,14 @@ function renderHistory(){
       <div class="stat"><span class="small muted">Highest</span><b>${Math.max(...list.map(r=>r.s))}/${Math.max(...list.map(r=>r.d))}</b></div>
       <div class="stat"><span class="small muted">Lowest</span><b>${Math.min(...list.map(r=>r.s))}/${Math.min(...list.map(r=>r.d))}</b></div>
       <div class="stat"><span class="small muted">Average heart rate</span><b>${ps.length?Math.round(avg(ps)):"–"}</b></div>
-      <div class="stat"><span class="small muted">Readings</span><b>${list.length}</b></div>`;
+      <div class="stat"><span class="small muted">Readings</span><b>${list.length}</b></div>
+      <div class="stat"><span class="small muted">Low readings (below 90/60)</span><b>${list.filter(r=>r.s<90||r.d<60).length}</b></div>`;
     $("chart").innerHTML=chartSVG(list,g.homeLine);
   }
   const all=sorted().reverse();
   $("table").innerHTML=`<thead><tr><th>When</th><th>Reading</th><th>Heart rate</th><th>Result</th><th>Note</th><th></th></tr></thead><tbody>${
     all.slice(0,200).map(x=>{const r=interpret(x.s,x.d,x.setting,prefs.guide), dt=new Date(x.t);
-      return `<tr><td>${fmtDate(dt)} ${fmtTime(dt)}${x.setting==="clinic"?"<br><span class='small muted'>clinic</span>":""}</td><td><b>${x.s}/${x.d}</b>${x.irreg?" <span class='pill lv-2'>irregular</span>":""}</td><td>${x.p??"–"}</td><td><span class="pill lv-${r.lv}">${esc(r.plain)}</span></td><td>${esc(x.note)}</td><td><button class="quiet sm" data-del="${esc(x.id)}" aria-label="Delete this reading">Delete</button></td></tr>`;}).join("")
+      return `<tr><td>${fmtDate(dt)} ${fmtTime(dt)}${x.setting==="clinic"?"<br><span class='small muted'>clinic</span>":""}${x.pos==="standing"?"<br><span class='small muted'>standing</span>":""}</td><td><b>${x.s}/${x.d}</b>${x.irreg?" <span class='pill lv-2'>irregular</span>":""}</td><td>${x.p??"–"}</td><td><span class="pill lv-${r.lv}">${esc(r.plain)}</span></td><td>${esc(x.note)}</td><td><button class="quiet sm" data-del="${esc(x.id)}" aria-label="Delete this reading">Delete</button></td></tr>`;}).join("")
   }</tbody>`;
 }
 $("table").addEventListener("click",e=>{ const id=e.target.dataset?.del; if(!id) return; readings=readings.filter(r=>r.id!==id); lastResult=null; save(); render(); });
@@ -830,7 +968,7 @@ $("weekStart").addEventListener("change",e=>{ if(e.target.value){ weekStart=e.ta
 function weekResult(startKey, list, guideKey){
   const start=new Date(startKey+"T00:00");
   const days=[...Array(7)].map((_,i)=>{const d=new Date(start); d.setDate(start.getDate()+i); return dayKey(d);});
-  const homes=list.filter(r=>r.setting==="home");
+  const homes=list.filter(r=>r.setting==="home" && r.pos!=="standing");
   const byDay=days.map(k=>homes.filter(r=>r.t.slice(0,10)===k));
   const daysWith=byDay.filter(x=>x.length).length;
   const counted=byDay.slice(1).flat();
@@ -974,7 +1112,8 @@ function renderThresholds(){
   <tr><td rowspan="3">ACC/AHA 2025</td><td>Elevated</td><td colspan="2">120–129 and below 80</td></tr>
   <tr><td>Stage 1</td><td colspan="2">130–139 or 80–89</td></tr>
   <tr><td>Stage 2</td><td colspan="2">140 or 90 and above</td></tr>
-  <tr><td>All</td><td>Low</td><td colspan="2">below 90/60</td></tr>
+  <tr><td>All</td><td>Low</td><td colspan="2">below 90/60 (NHS)</td></tr>
+  <tr><td>All</td><td>Drop on standing (postural hypotension)</td><td colspan="2">top number falls by 20 or more, or bottom number by 10 or more, within 3 minutes of standing</td></tr>
   <tr><td>All</td><td>Dangerously high</td><td colspan="2">180/120 and above. With chest pain, breathlessness, weakness, trouble speaking or seeing, or a very bad headache: call the emergency number</td></tr></tbody>`;
 }
 
@@ -983,7 +1122,8 @@ function summaryBlock(days){
   const l=inRange(days); if(!l.length) return `Last ${days} days: no readings\n`;
   const S=Math.round(avg(l.map(r=>r.s))), D=Math.round(avg(l.map(r=>r.d))), ps=l.map(r=>r.p).filter(Boolean);
   const hi=l.filter(r=>r.s>=180||r.d>=120).length, ir=l.filter(r=>r.irreg).length;
-  return `Last ${days} days: ${l.length} readings, average ${S}/${D} mmHg${ps.length?`, heart rate ${Math.round(avg(ps))}`:""}\n  Range: top ${Math.min(...l.map(r=>r.s))}-${Math.max(...l.map(r=>r.s))}, bottom ${Math.min(...l.map(r=>r.d))}-${Math.max(...l.map(r=>r.d))}\n  Readings 180/120 or higher: ${hi}. Irregular heartbeat sign: ${ir}\n`;
+  const lowN=l.filter(r=>r.s<90||r.d<60).length;
+  return `Last ${days} days: ${l.length} readings, average ${S}/${D} mmHg${ps.length?`, heart rate ${Math.round(avg(ps))}`:""}\n  Range: top ${Math.min(...l.map(r=>r.s))}-${Math.max(...l.map(r=>r.s))}, bottom ${Math.min(...l.map(r=>r.d))}-${Math.max(...l.map(r=>r.d))}\n  Readings 180/120 or higher: ${hi}. Irregular heartbeat sign: ${ir}. Low (below 90/60): ${lowN}\n`;
 }
 function renderReport(){
   const w=weekResult(weekStart,readings,prefs.guide);
@@ -992,6 +1132,8 @@ function renderReport(){
   let t=`MY BLOOD PRESSURE SUMMARY (Steady app)\n${new Date().toLocaleString("en-GB")}\nGuideline: ${GUIDES[prefs.guide].name}\n${readings.some(r=>r.ex)?"NOTE: includes example data\n":""}\n`;
   t+=w.ready?`7-day home check (from ${weekStart}, day 1 not counted): ${w.S}/${w.D} mmHg from ${w.n} readings - ${w.r.plain}\n\n`:`7-day home check: not finished (${w.daysWith} of 7 days)\n\n`;
   t+=summaryBlock(7)+summaryBlock(30)+"\n";
+  const lastStand=standTests[standTests.length-1];
+  if(lastStand) t+=`Standing test (${lastStand.t.replace("T"," ")}): sitting ${lastStand.sit.join("/")}, standing 1 min ${lastStand.st1.join("/")}${lastStand.st3?`, 3 min ${lastStand.st3.join("/")}`:""}. Largest drop ${lastStand.dropS}/${lastStand.dropD}${lastStand.oh?" - meets postural hypotension definition":""}${lastStand.dizzy?". Felt dizzy on standing":""}\n\n`;
   t+=`Takes blood pressure medicine: ${prefs.onMeds?"yes":"no / not stated"}\n`;
   if(prefs.meds.length) t+=`Medicines: ${prefs.meds.map(m=>`${m.name} at ${m.time}`).join("; ")}\n`;
   t+=`Activity last 7 days: ${act.reduce((x,a)=>x+a.min,0)} minutes\n`;
@@ -1001,19 +1143,20 @@ function renderReport(){
   $("waLink").href="https://wa.me/?text="+encodeURIComponent(t);
   $("smsLink").href="sms:?&body="+encodeURIComponent(t.slice(0,600));
 }
-const backupJSON = () => JSON.stringify({app:"steady",v:1,readings,activities,prefs,weekStart});
+const backupJSON = () => JSON.stringify({app:"steady",v:1,readings,activities,prefs,weekStart,standTests});
 async function copy(text,msg){ try{ await navigator.clipboard.writeText(text); $("copyOut").textContent=msg; }catch(e){ $("copyOut").textContent="Copy didn't work. Press and hold the text to copy it."; } }
 $("copyReport").addEventListener("click",()=>copy($("reportText").value,"Summary copied. Paste it into a message."));
 $("copyCsv").addEventListener("click",()=>copy("datetime,systolic,diastolic,pulse,setting,arm,irregular,note\n"+sorted().map(r=>[r.t,r.s,r.d,r.p??"",r.setting,r.arm,r.irreg?"yes":"no",`"${(r.note||"").replace(/"/g,'""')}"`].join(",")).join("\n"),"Copied. Paste it into a spreadsheet."));
 $("copyBackup").addEventListener("click",()=>copy(backupJSON(),"Backup copied. Send it to yourself to keep it safe."));
 $("waBackup").addEventListener("click",e=>{ e.currentTarget.href="https://wa.me/?text="+encodeURIComponent(backupJSON()); });
 $("restore").addEventListener("click",()=>{ try{ const o=JSON.parse($("backupText").value); if(!Array.isArray(o.readings)) throw 0;
-  readings=o.readings; activities=o.activities||[]; prefs={...prefs,...(o.prefs||{})}; weekStart=o.weekStart||weekStart; save(); applyLook(); $("copyOut").textContent="Backup restored."; lastResult=null; render(); }
+  readings=o.readings; activities=o.activities||[]; standTests=o.standTests||[]; store.set("standTests",standTests); prefs={...prefs,...(o.prefs||{})}; weekStart=o.weekStart||weekStart; save(); applyLook(); $("copyOut").textContent="Backup restored."; lastResult=null; render(); }
   catch(e){ $("copyOut").textContent="That isn't a Steady backup. Paste the whole backup text."; } });
 $("wipe").addEventListener("click",()=>$("wipeConfirm").classList.remove("hide"));
 $("wipeNo").addEventListener("click",()=>$("wipeConfirm").classList.add("hide"));
-$("wipeYes").addEventListener("click",()=>{ readings=[]; activities=[]; prefs.meds=[]; lastResult=null; save(); $("wipeConfirm").classList.add("hide"); render(); });
+$("wipeYes").addEventListener("click",()=>{ readings=[]; activities=[]; prefs.meds=[]; standTests=[]; store.set("standTests",standTests); lastResult=null; save(); $("wipeConfirm").classList.add("hide"); render(); });
 $("clearExamples").addEventListener("click",()=>{ readings=readings.filter(r=>!r.ex); lastResult=null; save(); render(); });
+$("toStand").addEventListener("click",()=>setTimeout(()=>$("standCard").scrollIntoView(),50));
 $("aboutLink").addEventListener("click",()=>setTimeout(()=>$("about").scrollIntoView(),50));
 
 /* ---------- offline / install ---------- */
